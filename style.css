@@ -126,3 +126,8 @@ details > summary::-webkit-details-marker { display: none; }
 .sheet { top: 0; bottom: 0; height: 100%; height: 100dvh; }
 .sheet > .panel { max-height: calc(100vh - 24px); max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 16px); overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 body.lock { overflow: hidden; }
+.qadd { margin-top: 10px; width: 100%; min-height: 44px; border: none; border-radius: 12px; background: #FFE14D; color: #3B3418; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.qnote { width: 100%; min-height: 44px; border: none; border-radius: 12px; background: #FFF4B8; color: #3B3418; display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 15px; }
+.qn-dot { width: 10px; height: 10px; border-radius: 5px; background: #E0B800; flex-shrink: 0; }
+.qn-ev { background: #FFE14D !important; border-left-color: #E0B800 !important; outline: 1.5px dashed #C9A200; }
+.qn-inp { font-size: 17px; height: 52px; background: #FFF9D6; border-color: #E8D16A; }

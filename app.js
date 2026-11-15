@@ -220,8 +220,8 @@ function dayEntries(t, date) {
   timed.sort((a, b) => a.time.localeCompare(b.time));
   return { timed, untimed };
 }
-function noteCard(n) {
-  return `<button class="note" onclick="A.noteForm('${n.id}')"><span>${esc(n.text)}</span></button>`;
+function noteRow(n) {
+  return `<button class="qnote" onclick="A.noteForm('${n.id}')"><span class="qn-dot"></span><span class="grow" style="text-align:left">${esc(n.text)}</span><span class="small nw" style="font-weight:700">Completa ›</span></button>`;
 }
 function vDay(t) {
   const d = today();
@@ -231,7 +231,8 @@ function vDay(t) {
   let s1 = addDays(s0, 4); if (s1 > t.end) { s1 = t.end; s0 = addDays(s1, -4) < t.start ? t.start : addDays(s1, -4); }
   const strip = []; for (let x = s0; x <= s1; x = addDays(x, 1)) strip.push(x);
   const { timed, untimed } = dayEntries(t, day);
-  const notes = (t.notes || []).filter((x) => x.date === day);
+  const notes = (t.notes || []).filter((x) => x.date === day && !x.time);
+  const tnotes = (t.notes || []).filter((x) => x.date === day && x.time);
   const H0 = 7, H1 = 24, PX = 40, y = (m) => ((m - H0 * 60) / 60) * PX;
   const hours = Array.from({ length: H1 - H0 }, (_, i) => `<div class="hour" style="height:${PX}px"><span style="display:inline-block;padding-top:3px">${pad(H0 + i)}:00</span></div>`).join('');
   const nm = nowMin(), isToday = day === d;
@@ -245,6 +246,8 @@ function vDay(t) {
     const extra = cur ? ';outline:2px solid var(--ink);box-shadow:0 6px 18px rgba(31,42,68,.18);z-index:3' : nx ? ';outline:2px solid var(--ink);z-index:3' : '';
     const st = e.todo ? ' · <span class="wavy">da prenotare</span>' : e.paid ? ' · <b style="display:inline;font-size:12px;color:var(--ok)">✓ pagato</b>' : '';
     return `<button class="ev" ${e.id === targetId ? 'data-target="1"' : ''} style="top:${y(a)}px;height:${Math.max(y(b) - y(a), 34)}px;background:${CATS[e.cat].bg};border-left-color:${CATS[e.cat].s}${stx}${isToday && b <= nm ? ';opacity:.6' : ''}${extra}" onclick="A.openEntry('${e.kind}','${e.id}')">${tag}<b>${esc(e.title)}</b><span>${e.time}${e.endTime ? ' – ' + e.endTime : ''}${e.price ? ' · ' + eur(e.price) : e.sub ? ' · ' + e.sub : ''}${st}</span></button>`; }).join('');
+  const nevs = tnotes.map((n) => { const a = tmin(n.time);
+    return `<button class="ev qn-ev" style="top:${y(a)}px;height:34px" onclick="A.noteForm('${n.id}')"><b>${esc(n.text)}</b><span>${n.time} · appunto da completare</span></button>`; }).join('');
   const now = isToday && nm >= H0 * 60 ? `<div class="nowline" style="top:${y(nm)}px"></div>` : '';
   const stays = staysOn(t, day).map((st) => { const last = addDays(day, 1) === st.endDate;
     return `<div class="band" role="button" style="cursor:pointer" onclick="A.entryForm('${st.id}')"><b>${esc(st.title)}${st.status === 'pagato' ? ' <span style="color:var(--ok)">✓</span>' : st.status === 'da prenotare' ? ' <span class="wavy small">da prenotare</span>' : ''}</b><span>${last ? 'ultima notte · check-out domani' : 'notte ' + (diffDays(st.date, day) + 1) + ' di ' + diffDays(st.date, st.endDate || addDays(st.date, 1))}</span></div>`; }).join('');
@@ -254,9 +257,10 @@ function vDay(t) {
   <div class="dayhead" style="margin-top:10px;grid-template-columns:repeat(${strip.length},minmax(0,1fr))">${strip.map((x) => { const X = parse(x);
     return `<button class="daybtn ${x === day ? 'on' : ''} ${x < d && x !== day ? 'past' : ''}" onclick="A.day('${x}')"><small>${GG[X.getDay()].toUpperCase()}</small><b>${X.getDate()}</b></button>`; }).join('')}</div>
   <div class="col" style="gap:6px;margin-top:10px">${stays}</div>
-  <div class="notes">${notes.map(noteCard).join('')}<button class="note add" onclick="A.noteForm(null,'${day}')">${svg('plus', 18, 2.2)} Nota veloce</button></div>
+  <button class="qadd" onclick="A.noteForm(null,'${day}')">${svg('plus', 18, 2.4)} Appunto veloce</button>
+  ${notes.length ? `<div class="col" style="gap:6px;margin-top:6px">${notes.map(noteRow).join('')}</div>` : ''}
   ${unt}
-  <div class="timeline" style="margin-top:12px">${hours}${evs}${now}</div>`;
+  <div class="timeline" style="margin-top:12px">${hours}${evs}${nevs}${now}</div>`;
 }
 function vPeriod(t) {
   const d = today(), N = Math.min(5, nDays(t));
@@ -278,6 +282,7 @@ function vPeriod(t) {
   const evs = days.map((x, i) => dayEntries(t, x).timed.map((e) => { const a = tmin(e.time), b = Math.max(tmin(e.endTime) || a + 60, a + 30);
     const stx = e.todo ? `;border:1.5px dashed ${CATS[e.cat].s};border-left:3px solid ${CATS[e.cat].s}` : e.paid ? `;box-shadow:inset 0 0 0 1.5px ${CATS[e.cat].s}` : '';
     return `<div class="pcol-ev" onclick="A.openEntry('${e.kind}','${e.id}')" style="top:${y(a)}px;height:${Math.max(y(b) - y(a), 30)}px;left:${left(i)};width:${w};background:${CATS[e.cat].bg};border-left-color:${CATS[e.cat].s}${stx}${x < d ? ';opacity:.6' : ''}"><b>${esc(e.title)}</b><div style="color:#3E4658">${e.time}${e.paid ? ' <span style="color:var(--ok);font-weight:700">✓</span>' : ''}</div></div>`; }).join('')).join('');
+  const nev = days.map((x, i) => (t.notes || []).filter((n) => n.date === x && n.time).map((n) => `<div class="pcol-ev" onclick="A.noteForm('${n.id}')" style="top:${y(tmin(n.time))}px;height:30px;left:${left(i)};width:${w};background:#FFE14D;border-left-color:#E0B800"><b>${esc(n.text)}</b><div>${n.time}</div></div>`).join('')).join('');
   const nm = nowMin(), ti = days.indexOf(d);
   const now = ti >= 0 && nm >= H0 * 60 ? `<div style="position:absolute;top:${y(nm)}px;height:2px;left:${left(ti)};width:${w};background:var(--terra);z-index:2"></div>` : '';
   const canPrev = ui.pStart > t.start, canNext = addDays(ui.pStart, N - 1) < t.end;
@@ -287,7 +292,7 @@ function vPeriod(t) {
   <div class="col" style="gap:4px;margin:0 -8px">
     <div style="display:grid;grid-template-columns:${cols}"><span></span>${headH}</div>
     <div style="display:grid;grid-template-columns:${cols};min-height:22px"><span style="font-size:10px;color:var(--mut);align-self:center">notte</span>${stays}</div>
-    <div class="pgrid" style="height:${y(H1 * 60)}px;margin-top:4px">${shade}${lines}${evs}${now}</div>
+    <div class="pgrid" style="height:${y(H1 * 60)}px;margin-top:4px">${shade}${lines}${evs}${nev}${now}</div>
   </div>`;
 }
 
@@ -466,26 +471,39 @@ function saveEntry(id) {
   if (save()) { closeSheet(); render(); toast('Salvato'); }
 }
 
-// --- Note veloci
+// --- Appunti veloci
+function guessCat(x) { const s = x.toLowerCase();
+  if (/(volo|treno|bus|traghett|aereo|taxi|auto|noleggio|metro|transfer)/.test(s)) return 'Trasporti';
+  if (/(hotel|airbnb|ostello|alloggio|check)/.test(s)) return 'Alloggio';
+  if (/(cena|pranzo|colazione|aperitivo|ristorante|bar|caff)/.test(s)) return 'Cibo';
+  if (/(museo|mostra|tour|visita|concerto|escursione|biglietti|spettacolo)/.test(s)) return 'Esperienze';
+  return null; }
 function noteForm(id, date) {
   const t = trip(ui.tripId); const n = id ? t.notes.find((x) => x.id === id) : null;
-  sheet(`<div class="between"><button onclick="A.close()" style="background:none;border:none;color:var(--mut);min-height:44px;font-size:15px">Chiudi</button><b class="serif" style="font-size:18px">Nota veloce</b><button onclick="A.saveNote('${id || ''}','${date || n?.date || ''}')" style="background:none;border:none;color:var(--terra);font-weight:700;min-height:44px;font-size:15px">Fatto</button></div>
-  <textarea id="f_notetext" class="notearea" placeholder="Scrivi al volo: un posto, un prezzo, un'idea…">${esc(n?.text || '')}</textarea>
-  ${n ? `<button class="btn" onclick="A.noteToEntry('${n.id}')">Completa come voce</button><div class="small mut" style="text-align:center">Diventa una voce con categoria, prezzo, orario e tutti i dettagli.</div>
-  <button class="btn danger" onclick="A.delNote('${n.id}')">Elimina nota</button>` : ''}`);
-  setTimeout(() => { const el = document.getElementById('f_notetext'); if (el) el.focus({ preventScroll: true }); }, 60);
+  const D = n?.date || date || today();
+  sheet(`${sheetHead(n ? 'Appunto' : 'Appunto veloce', `A.saveNote('${id || ''}','${D}')`)}
+  <div class="small mut" style="margin-top:-6px">${fmtDay(D)} · scrivi solo l'essenziale, i dettagli li aggiungi dopo</div>
+  <input id="f_notetext" class="inp qn-inp" value="${esc(n?.text || '')}" placeholder="Es. Cena da Zé, volo per Porto, museo…" onkeydown="if(event.key==='Enter')A.saveNote('${id || ''}','${D}')">
+  <div class="field"><label for="f_notetime">Ora (facoltativa)</label><input id="f_notetime" type="time" class="inp" value="${n?.time || ''}"></div>
+  ${n ? `<button class="btn" onclick="A.noteToEntry('${n.id}')">Completa con tutti i dettagli</button>
+  <button class="btn danger" onclick="A.delNote('${n.id}')">Elimina appunto</button>` : `<button class="btn" style="background:var(--ink)" onclick="A.saveNote('','${D}')">Metti in calendario</button>`}`);
+  setTimeout(() => { const el = document.getElementById('f_notetext'); if (el && !n) el.focus({ preventScroll: true }); }, 60);
 }
 function saveNote(id, date) {
-  const t = trip(ui.tripId); const text = val('f_notetext');
+  const t = trip(ui.tripId); const text = val('f_notetext'), time = val('f_notetime');
   if (!text) { if (id) t.notes = t.notes.filter((x) => x.id !== id); }
-  else if (id) t.notes.find((x) => x.id === id).text = text;
-  else t.notes.push({ id: uid(), text, date: date || today() });
+  else if (id) Object.assign(t.notes.find((x) => x.id === id), { text, time });
+  else t.notes.push({ id: uid(), text, time, date: date || today() });
   save(); closeSheet(); render();
 }
 function noteToEntry(id) {
-  const t = trip(ui.tripId); const n = t.notes.find((x) => x.id === id); const text = val('f_notetext') || n.text;
-  ui.day = n.date; entryForm(); ui.fromNote = id;
-  setTimeout(() => { const b = document.querySelector(`.catblock[data-cat="${ui.formCat}"] [data-k="title"]`); if (b) b.value = text; const nt = document.getElementById('f_note'); if (nt) nt.value = text; }, 0);
+  const t = trip(ui.tripId); const n = t.notes.find((x) => x.id === id);
+  const text = val('f_notetext') || n.text, time = val('f_notetime') || n.time || '';
+  const c = guessCat(text); if (c) ui.lastCat = c;
+  ui.day = n.date; ui.tab = 'viaggio'; entryForm(); ui.fromNote = id;
+  setTimeout(() => { const blk = document.querySelector(`.catblock[data-cat="${ui.formCat}"]`); if (!blk) return;
+    const set = (k, v) => { const el = blk.querySelector(`[data-k="${k}"]`); if (el && v) el.value = v; };
+    set('title', text); set('date', n.date); set('time', time); }, 0);
 }
 
 // --- To-do
