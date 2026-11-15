@@ -143,7 +143,7 @@ function stayOn(t, date) { return t.items.find((i) => i.cat === 'Alloggio' && i.
 
 // ---------- stato di navigazione
 const ui = { view: 'home', tripId: null, tab: 'viaggio', day: null, mode: 'giorno', pStart: null, spFilter: null };
-function go(view, opts = {}) { Object.assign(ui, { view }, opts); render(); window.scrollTo(0, 0); }
+function go(view, opts = {}) { Object.assign(ui, { view }, opts); window.scrollTo(0, 0); render(); }
 
 // ---------- rendering
 function render() {
@@ -153,8 +153,8 @@ function render() {
   const tabs = { viaggio: vViaggio, spese: vSpese, todo: vTodo, assistente: vAssist };
   app.innerHTML = (tabs[ui.tab] || vViaggio)(t);
   tabbar(true);
-  if (ui.scrollNow) { ui.scrollNow = false; const nl = document.querySelector('.nowline');
-    if (nl) window.scrollTo(0, Math.max(0, nl.getBoundingClientRect().top + window.scrollY - 300)); else window.scrollTo(0, 0); }
+  if (ui.scrollNow) { ui.scrollNow = false; const tg = document.querySelector('[data-target]') || document.querySelector('.nowline');
+    if (tg) window.scrollTo(0, Math.max(0, tg.getBoundingClientRect().top + window.scrollY - 220)); else window.scrollTo(0, 0); }
 }
 function tabbar(show) {
   const nb = $('#tabbar'); nb.hidden = !show; if (!show) return;
@@ -203,11 +203,12 @@ function vViaggio(t) {
   const d = today(), ph = phase(t);
   const sub = ph === 'corso' ? `Giorno <span class="hl"><b>${diffDays(t.start, d) + 1} di ${nDays(t)}</b></span>`
     : ph === 'futuro' ? `Mancano <span class="hl"><b>${diffDays(d, t.start)} giorni</b></span>` : 'Viaggio concluso';
-  const body = ui.mode === 'periodo' ? vPeriod(t) : ui.mode === 'pren' ? bookingsList(t) : vDay(t);
+  if (ui.mode !== 'periodo') ui.mode = 'giorno';
+  const body = ui.mode === 'periodo' ? vPeriod(t) : vDay(t);
   return `${head(t, `<span class="row" style="gap:4px"><button class="iconbtn" aria-label="Modifica viaggio" onclick="A.tripForm('${t.id}')">${svg('edit', 20)}</button>${plusBtn('A.itemForm()', 'Aggiungi al viaggio')}</span>`)}
   <h1>${esc(t.name)} ${t.emoji || ''}</h1>
   <div class="between"><span class="mut" style="font-size:14px">${fmtRange(t.start, t.end)}</span><span style="font-size:14px">${sub}</span></div>
-  <div class="seg" style="margin-top:12px"><button class="${ui.mode === 'giorno' ? 'on' : ''}" onclick="A.mode('giorno')">Giorno</button><button class="${ui.mode === 'periodo' ? 'on' : ''}" onclick="A.mode('periodo')">Più giorni</button><button class="${ui.mode === 'pren' ? 'on' : ''}" onclick="A.mode('pren')">Prenotazioni</button></div>
+  <div class="seg" style="margin-top:12px"><button class="${ui.mode === 'giorno' ? 'on' : ''}" onclick="A.mode('giorno')">Oggi</button><button class="${ui.mode === 'periodo' ? 'on' : ''}" onclick="A.mode('periodo')">Più giorni</button></div>
   ${body}`;
 }
 function bookingsList(t) {
@@ -241,8 +242,8 @@ function itemRow(t, i) {
 function dayEntries(t, date) {
   const timed = [], untimed = [];
   t.items.filter((i) => i.cat !== 'Alloggio' && i.date === date).forEach((i) => {
-    if (i.time) timed.push({ kind: 'item', id: i.id, title: i.title, time: i.time, endTime: i.endTime, cat: i.cat, sub: i.price ? eur(i.price) : '', done: i.done, todo: i.status === 'da prenotare' });
-    else if (!i.done) untimed.push({ kind: 'item', id: i.id, title: i.title, cat: i.cat, todo: i.status === 'da prenotare' });
+    if (i.time) timed.push({ kind: 'item', id: i.id, title: i.title, time: i.time, endTime: i.endTime, cat: i.cat, sub: i.price ? eur(i.price) : '', done: i.done, todo: i.status === 'da prenotare', paid: i.status === 'pagato' });
+    else if (!i.done) untimed.push({ kind: 'item', id: i.id, title: i.title, cat: i.cat, todo: i.status === 'da prenotare', paid: i.status === 'pagato' });
   });
   (t.todos || []).filter((x) => x.date === date).forEach((x) => {
     if (x.time) timed.push({ kind: 'todo', id: x.id, title: x.text, time: x.time, cat: 'Varie', sub: 'to-do', done: x.done });
@@ -271,18 +272,22 @@ function vDay(t) {
   const nm = nowMin(), isToday = day === d;
   let curId = null, nextId = null;
   if (isToday) { timed.forEach((e) => { const a = tmin(e.time), b = tmin(e.endTime) || a + 60; if (a <= nm && nm < b && !curId) curId = e.id; if (a > nm && !nextId) nextId = e.id; }); }
+  else if (day > d && timed.length) nextId = null;
+  const targetId = curId || nextId || (!isToday && timed.length ? timed[0].id : null);
   const evs = timed.map((e) => { const a = tmin(e.time), b = tmin(e.endTime) || a + 60;
     const cur = e.id === curId, nx = !curId && e.id === nextId;
     const tag = cur ? '<span class="badge" style="position:absolute;right:8px;top:6px;background:var(--ink);color:var(--paper)">ADESSO</span>' : nx ? '<span class="badge b-now" style="position:absolute;right:8px;top:6px">PROSSIMO</span>' : '';
-    const extra = cur ? ';outline:2px solid var(--ink);box-shadow:0 6px 18px rgba(31,42,68,.18);z-index:3' : nx ? ';outline:1.5px solid var(--ink)' : '';
-    return `<button class="ev" style="top:${y(a)}px;height:${Math.max(y(b) - y(a), 34)}px;background:${CATS[e.cat].bg};border-left-color:${CATS[e.cat].s}${e.done || (isToday && b <= nm) ? ';opacity:.6' : ''}${extra}" onclick="A.openEntry('${e.kind}','${e.id}')">${tag}<b>${esc(e.title)}</b><span>${e.time}${e.endTime ? ' – ' + e.endTime : ''}${e.sub ? ' · ' + esc(e.sub) : ''}${e.todo ? ' · da prenotare' : ''}</span></button>`; }).join(''); const now = day === d && nm >= H0 * 60 ? `<div class="nowline" style="top:${y(nm)}px"></div>` : '';
+    const stx = e.todo ? `;border:1.5px dashed ${CATS[e.cat].s};border-left:4px solid ${CATS[e.cat].s}` : e.paid ? `;box-shadow:inset 0 0 0 1.5px ${CATS[e.cat].s}` : '';
+    const extra = cur ? ';outline:2px solid var(--ink);box-shadow:0 6px 18px rgba(31,42,68,.18);z-index:3' : nx ? ';outline:2px solid var(--ink);z-index:3' : '';
+    const st = e.todo ? ' · <span class="wavy">da prenotare</span>' : e.paid ? ' · <b style="display:inline;font-size:12px;color:var(--ok)">✓ pagato</b>' : '';
+    return `<button class="ev" ${e.id === targetId ? 'data-target="1"' : ''} style="top:${y(a)}px;height:${Math.max(y(b) - y(a), 34)}px;background:${CATS[e.cat].bg};border-left-color:${CATS[e.cat].s}${stx}${e.done || (isToday && b <= nm) ? ';opacity:.6' : ''}${extra}" onclick="A.openEntry('${e.kind}','${e.id}')">${tag}<b>${esc(e.title)}</b><span>${e.time}${e.endTime ? ' – ' + e.endTime : ''}${e.sub ? ' · ' + esc(e.sub) : ''}${st}</span></button>`; }).join(''); const now = day === d && nm >= H0 * 60 ? `<div class="nowline" style="top:${y(nm)}px"></div>` : '';
   return `<div class="serif" style="font-size:20px;margin-top:14px">${GGL[D.getDay()]} <span class="hl">${D.getDate()} ${MML[D.getMonth()]}</span> <span class="mut" style="font-family:Karla,Arial,sans-serif;font-size:13px;font-weight:400">· giorno ${n} di ${nDays(t)}</span></div>
   <div class="dayhead" style="margin-top:10px;grid-template-columns:repeat(${strip.length},minmax(0,1fr))">${strip.map((x) => { const X = parse(x);
     return `<button class="daybtn ${x === day ? 'on' : ''} ${x < d && x !== day ? 'past' : ''}" onclick="A.day('${x}')"><small>${GG[X.getDay()].toUpperCase()}</small><b>${X.getDate()}</b></button>`; }).join('')}</div>
-  ${st ? `<div class="band" style="margin-top:10px"><b>${esc(st.title)}</b><span>${lastNight ? 'ultima notte · check-out domani' : 'notte ' + (diffDays(st.date, day) + 1) + ' di ' + diffDays(st.date, st.endDate)}</span></div>` : ''}
+  ${st ? `<div class="band" role="button" style="margin-top:10px;cursor:pointer" onclick="A.itemForm('${st.id}')"><b>${esc(st.title)}${st.status === 'pagato' ? ' <span style="color:var(--ok)">✓</span>' : ''}</b><span>${lastNight ? 'ultima notte · check-out domani' : 'notte ' + (diffDays(st.date, day) + 1) + ' di ' + diffDays(st.date, st.endDate)}</span></div>` : ''}
   <div class="card" style="margin-top:8px;padding:10px 12px">
     <div class="between"><span class="lab" style="font-size:11px">Da fare oggi</span><button class="chip" style="height:30px" onclick="A.todoForm(null,'${day}')">+ Aggiungi</button></div>
-    ${untimed.length ? untimed.map((e) => `<label class="check"><input type="checkbox" ${e.done ? 'checked' : ''} onchange="A.toggleDone('${e.kind}','${e.id}')"><span class="${e.done ? 'done' : ''}">${esc(e.title)}${e.todo ? ' <span class="wavy small">da prenotare</span>' : ''}</span></label>`).join('') : '<div class="small mut" style="padding:6px 0">Niente in lista per oggi.</div>'}
+    ${untimed.length ? untimed.map((e) => `<label class="check"><input type="checkbox" ${e.done ? 'checked' : ''} onchange="A.toggleDone('${e.kind}','${e.id}')"><span class="${e.done ? 'done' : ''}">${esc(e.title)}${e.todo ? ' <span class="wavy small">da prenotare</span>' : e.paid ? ' <b class="small" style="color:var(--ok)">✓</b>' : ''}</span></label>`).join('') : '<div class="small mut" style="padding:6px 0">Niente in lista per oggi.</div>'}
   </div>
   <div class="timeline" style="margin-top:10px">${hours}${evs}${now}</div>`;
 }
@@ -306,7 +311,8 @@ function vPeriod(t) {
   const shade = days.map((x, i) => `<div style="position:absolute;top:0;height:${y(H1 * 60)}px;left:${left(i)};width:${w};background:${x < d ? 'rgba(31,42,68,.04)' : x === d ? 'rgba(244,207,107,.16)' : 'transparent'}"></div>`).join('');
   const lines = Array.from({ length: (H1 - H0) / 2 + 1 }, (_, k) => H0 + k * 2).map((h) => `<div style="position:absolute;left:0;right:0;top:${y(h * 60)}px;border-top:1px solid var(--line)"><span style="position:absolute;top:1px;font-size:10px;color:var(--mut)">${pad(h)}</span></div>`).join('');
   const evs = days.map((x, i) => dayEntries(t, x).timed.map((e) => { const a = tmin(e.time), b = tmin(e.endTime) || a + 60;
-    return `<div class="pcol-ev" onclick="A.openEntry('${e.kind}','${e.id}')" style="top:${y(a)}px;height:${Math.max(y(b) - y(a), 30)}px;left:${left(i)};width:${w};background:${CATS[e.cat].bg};border-left-color:${CATS[e.cat].s}${x < d ? ';opacity:.6' : ''}"><b>${esc(e.title)}</b><div style="color:#3E4658">${e.time}</div></div>`; }).join('')).join('');
+    const stx = e.todo ? `;border:1.5px dashed ${CATS[e.cat].s};border-left:3px solid ${CATS[e.cat].s}` : e.paid ? `;box-shadow:inset 0 0 0 1.5px ${CATS[e.cat].s}` : '';
+    return `<div class="pcol-ev" onclick="A.openEntry('${e.kind}','${e.id}')" style="top:${y(a)}px;height:${Math.max(y(b) - y(a), 30)}px;left:${left(i)};width:${w};background:${CATS[e.cat].bg};border-left-color:${CATS[e.cat].s}${stx}${x < d ? ';opacity:.6' : ''}"><b>${esc(e.title)}</b><div style="color:#3E4658">${e.time}${e.paid ? ' <span style="color:var(--ok);font-weight:700">✓</span>' : ''}</div></div>`; }).join('')).join('');
   const nm = nowMin(), ti = days.indexOf(d);
   const now = ti >= 0 && nm >= H0 * 60 ? `<div style="position:absolute;top:${y(nm)}px;height:2px;left:${left(ti)};width:${w};background:var(--terra);z-index:2"></div>` : '';
   const canPrev = ui.pStart > t.start, canNext = addDays(ui.pStart, N - 1) < t.end;
@@ -345,7 +351,7 @@ function vSpese(t) {
       <b style="font-size:14px;white-space:nowrap">${eur(e.amount)}</b></button>`).join('')}</div>`; }).join('');
   return `${head(t, plusBtn('A.expForm()', 'Aggiungi spesa'))}
   <div class="small mut">${esc(t.name)} ${t.emoji || ''} · spese</div>
-  <div class="row" style="align-items:baseline;gap:8px"><span class="serif" style="font-size:34px">${eur(sp)}</span>${bt ? `<span class="mut">su ${eur0(bt)}</span>` : ''}</div>
+  <div class="row" style="align-items:baseline;gap:8px"><span class="serif" style="font-size:34px">${eur(sp)}</span>${bt ? `<span class="mut">su ${eur0(bt)} di budget</span>` : ''}</div>
   <div class="small mut">${eur(sp / 2)} a testa${bt ? ' · ' + Math.round((sp / bt) * 100) + '% del budget' : ''}</div>${daily}
   <div class="navy between" style="margin-top:14px;padding:14px 16px"><div class="col" style="gap:4px"><span class="mut" style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase">Saldo</span>
     <span>${debtor ? `${debtor} deve <b style="background:linear-gradient(transparent 55%,var(--terra) 55%);padding:0 2px">${eur(owe)}</b> a ${cred}` : 'Siete pari'}</span></div>
@@ -436,7 +442,7 @@ function saveTrip(id) {
   if (e < s) return toast('Il ritorno è prima della partenza');
   if (id) Object.assign(trip(id), { name, emoji: val('f_emoji'), start: s, end: e });
   else { const t = { id: uid(), name, emoji: val('f_emoji'), start: s, end: e, people: PEOPLE.slice(), budget: {}, items: [], expenses: [], ideas: [], checklist: [], todos: [] }; db.trips.push(t); ui.tripId = t.id; }
-  save(); closeSheet(); if (!id) go('trip', { tab: 'viaggio', mode: 'pren', day: null, pStart: null }); else render();
+  save(); closeSheet(); if (!id) go('trip', { tab: 'viaggio', mode: 'giorno', day: null, pStart: null }); else render();
 }
 
 function itemForm(id) {
@@ -528,17 +534,20 @@ function saveAssign(id) { const t = trip(ui.tripId); const x = t.ideas.find((i) 
 
 function budgetForm() {
   const t = trip(ui.tripId); const B = t.budget || {}; const n = nDays(t);
-  const pre = t.items.filter((i) => i.status !== 'da prenotare').reduce((a, i) => a + num(i.price), 0);
   const rows = CAT_NAMES.map((c) => { const booked = t.items.filter((i) => i.cat === c && i.status !== 'da prenotare').reduce((a, i) => a + num(i.price), 0);
-    return `<div class="card" style="overflow:hidden"><div class="between" style="background:${CATS[c].bg};padding:8px 14px;font-size:13px;font-weight:700"><span>${c}</span><span id="bt_${c}">${eur0(B[c] || 0)}</span></div>
-    <div class="col" style="padding:10px 14px;gap:6px"><div class="between small"><span class="row" style="gap:6px"><input class="inp" style="width:70px;height:38px;text-align:center;padding:0 6px" inputmode="decimal" id="bu_${c}" placeholder="€/g" oninput="A.bcalc()"><span class="nw">€ ×</span>
-      <input class="inp" style="width:52px;height:38px;text-align:center;padding:0 6px" inputmode="numeric" id="bq_${c}" placeholder="${n}" oninput="A.bcalc()"></span>
-      <span class="row" style="gap:6px"><span class="mut nw">= totale</span><input class="inp" style="width:84px;height:38px;text-align:center;padding:0 6px" inputmode="decimal" id="bv_${c}" value="${B[c] || ''}" oninput="A.bcalc('${c}')"></span></div>
-      ${booked ? `<div class="small mut">Già prenotato: <b style="color:var(--ink)">${eur(booked)}</b>${B[c] ? (booked <= B[c] ? ' · <span style="color:var(--ok);font-weight:700">' + eur0(B[c] - booked) + ' sotto budget</span>' : ' · <span class="wavy">sopra budget</span>') : ''}</div>` : ''}
+    return `<div class="card" style="overflow:hidden"><div style="background:${CATS[c].bg};padding:8px 14px;font-size:14px;font-weight:700">${c}</div>
+    <div class="col" style="padding:12px 14px;gap:8px">
+      <div class="between"><div class="row" style="gap:6px"><input class="inp" style="width:110px;text-align:right;font-weight:700" inputmode="decimal" id="bv_${c}" value="${B[c] ? String(B[c]).replace('.', ',') : ''}" placeholder="0" oninput="A.bcalc()"><b>€</b></div>
+        <span class="small mut" id="bt_${c}">${B[c] ? eur0(B[c] / 2) + ' a testa' : 'in due'}</span></div>
+      <details><summary class="small" style="color:var(--terra);font-weight:700;cursor:pointer;min-height:32px;display:flex;align-items:center">Calcola a giorno</summary>
+        <div class="row small" style="gap:6px;margin-top:6px;flex-wrap:wrap"><input class="inp" style="width:80px;height:40px;text-align:center" inputmode="decimal" id="bu_${c}" placeholder="0" oninput="A.bcalc('${c}')"><span class="nw">€ al giorno in due ×</span>
+          <input class="inp" style="width:56px;height:40px;text-align:center" inputmode="numeric" id="bq_${c}" value="${n}" oninput="A.bcalc('${c}')"><span>giorni</span></div></details>
+      ${booked ? `<div class="small mut">Già prenotato: <b style="color:var(--ink)">${eur(booked)}</b>${B[c] ? (booked <= B[c] ? ' · <span style="color:var(--ok);font-weight:700">restano ' + eur0(B[c] - booked) + '</span>' : ' · <span class="wavy">sopra budget</span>') : ''}</div>` : ''}
       ${c === 'Cibo' ? pastSuggest(t) : ''}</div></div>`; }).join('');
   sheet(`${sheetHead('Budget', 'A.saveBudget()')}
-  <div class="row" style="align-items:baseline;gap:8px"><span class="serif" style="font-size:32px" id="bTot">${eur0(budgetTot(t))}</span><span class="mut">previsto · ${n} giorni</span></div>
-  <div class="small mut">Puoi scrivere costo × giorni (es. 60 € × ${n}) oppure direttamente il totale. Già prenotato prima di partire: <b style="color:var(--ink)">${eur(pre)}</b>.</div>
+  <div class="navy col" style="gap:2px"><span class="mut" style="font-size:12px;letter-spacing:1.2px;text-transform:uppercase">Budget totale · in due</span>
+    <span class="serif" style="font-size:32px" id="bTot">${eur0(budgetTot(t))}</span><span class="small mut" id="bHead">${eur0(budgetTot(t) / 2)} a testa · ${n} giorni</span></div>
+  <div class="small mut" style="line-height:1.45">Per ogni categoria scrivi <b style="color:var(--ink)">quanto pensate di spendere in due</b>, per tutto il viaggio. Il budget è facoltativo: puoi lasciare vuote le categorie che non ti interessano.</div>
   ${rows}`);
 }
 function pastSuggest(t) {
@@ -546,11 +555,10 @@ function pastSuggest(t) {
   let tot = 0, days = 0; others.forEach((x) => { const c = entries(x).filter((e) => e.cat === 'Cibo').reduce((a, e) => a + num(e.amount), 0); if (c) { tot += c; days += nDays(x); } });
   return days ? `<div class="small mut">Dai viaggi passati: <span class="hl" style="color:var(--ink);font-weight:700">${eur0(tot / days)} al giorno</span></div>` : '';
 }
-function bcalc(direct) {
-  let tot = 0; CAT_NAMES.forEach((c) => { const u = numIn(val('bu_' + c)), q = numIn(val('bq_' + c)) || nDays(trip(ui.tripId));
-    if (u && direct !== c) document.getElementById('bv_' + c).value = String(Math.round(u * q * 100) / 100).replace('.', ',');
-    const v = numIn(val('bv_' + c)); document.getElementById('bt_' + c).textContent = eur0(v); tot += v; });
-  document.getElementById('bTot').textContent = eur0(tot);
+function bcalc(from) {
+  if (from) { const u = numIn(val('bu_' + from)), q = numIn(val('bq_' + from)); if (u && q) document.getElementById('bv_' + from).value = String(Math.round(u * q * 100) / 100).replace('.', ','); }
+  let tot = 0; CAT_NAMES.forEach((c) => { const v = numIn(val('bv_' + c)); document.getElementById('bt_' + c).textContent = v ? eur0(v / 2) + ' a testa' : 'in due'; tot += v; });
+  document.getElementById('bTot').textContent = eur0(tot); document.getElementById('bHead').textContent = `${eur0(tot / 2)} a testa · ${nDays(trip(ui.tripId))} giorni`;
 }
 function saveBudget() { const t = trip(ui.tripId); t.budget = {}; CAT_NAMES.forEach((c) => { const v = numIn(val('bv_' + c)); if (v) t.budget[c] = v; });
   save(); closeSheet(); render(); toast('Budget salvato'); }
@@ -609,7 +617,7 @@ function toast(msg, action, fn) { const el = $('#toast'); toastFn = fn || null;
 // ---------- API usata dai pulsanti
 window.A = {
   home: () => go('home'),
-  open: (id, tab) => { const t = trip(id); go('trip', { tripId: id, tab: tab || 'viaggio', day: null, pStart: null, mode: t && phase(t) === 'corso' ? 'giorno' : 'pren', scrollNow: true }); },
+  open: (id, tab) => { const t = trip(id); go('trip', { tripId: id, tab: tab || 'viaggio', day: null, pStart: null, mode: 'giorno', scrollNow: true }); },
   tab: (k) => { ui.tab = k; ui.scrollNow = k === 'viaggio'; window.scrollTo(0, 0); render(); },
   mode: (m) => { ui.mode = m; ui.scrollNow = m === 'giorno'; render(); },
   budToggle: (o) => { ui.budOpen = o; const c = document.querySelector('details.card summary span:last-child span'); if (c) c.style.transform = `rotate(${o ? 90 : 0}deg)`; },
@@ -620,7 +628,7 @@ window.A = {
   todoDel: (id) => { const t = trip(ui.tripId); t.todos = t.todos.filter((y) => y.id !== id); save(); closeSheet(); render(); },
   showDone: () => { ui.showDone = !ui.showDone; render(); },
   toastAct: () => { const f = toastFn; $('#toast').hidden = true; toastFn = null; if (f) f(); },
-  day: (d, fromPeriod) => { ui.day = d; if (fromPeriod) ui.mode = 'giorno'; ui.scrollNow = d === today(); render(); },
+  day: (d, fromPeriod) => { ui.day = d; if (fromPeriod) ui.mode = 'giorno'; ui.scrollNow = true; render(); },
   shift: (n) => { ui.pStart = addDays(ui.pStart, n); render(); },
   close: closeSheet, seg: (b) => { b.parentNode.querySelectorAll('button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); },
   catColor: (c) => CATS[c].s,
