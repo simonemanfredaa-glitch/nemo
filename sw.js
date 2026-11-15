@@ -1,5 +1,5 @@
 // NEMO — service worker: tiene l'app disponibile anche senza rete
-const CACHE = 'nemo-v2';
+const CACHE = 'nemo-v3';
 const FILES = ['./', './index.html', './style.css', './app.js', './manifest.webmanifest',
   './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
 

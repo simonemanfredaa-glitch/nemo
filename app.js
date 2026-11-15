@@ -34,6 +34,7 @@ const ICONS = {
   bag: '<path d="M5 8h14l-1 13H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
   camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
   link: '<path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1"/><path d="M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1"/>',
+  check: '<path d="M4 12l5 5L20 6"/>', chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>', edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>', chev: '<path d="M9 6l6 6-6 6"/>',
   left: '<path d="M15 6l-6 6 6 6"/>', right: '<path d="M9 6l6 6-6 6"/>',
 };
 const svg = (k, s = 22, w = 2) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[k]}</svg>`;
@@ -62,7 +63,17 @@ const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMin
 let db;
 function load() {
   try { db = JSON.parse(localStorage.getItem(KEY)); } catch (e) { db = null; }
-  if (!db || !Array.isArray(db.trips)) { db = { trips: [demoTrip()], v: 1 }; save(); }
+  if (!db || !Array.isArray(db.trips)) { db = { trips: [demoTrip()], v: 2 }; }
+  db.trips.forEach(migrate); db.v = 2; save();
+}
+function migrate(t) {
+  if (!t.todos) {
+    t.todos = (t.checklist || []).map((c) => ({ id: c.id || uid(), text: c.text, date: '', time: '', done: !!c.done }))
+      .concat((t.ideas || []).map((x) => ({ id: x.id || uid(), text: x.title, date: x.date || '', time: x.time || '', link: x.link || '', done: !!x.done })));
+  }
+  t.ideas = []; t.checklist = [];
+  ['items', 'expenses'].forEach((k) => { t[k] = t[k] || []; }); t.budget = t.budget || {};
+  return t;
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(db)); return true; }
@@ -139,13 +150,16 @@ function render() {
   const app = $('#app');
   if (ui.view === 'home') { app.innerHTML = vHome(); tabbar(false); return; }
   const t = trip(ui.tripId); if (!t) return go('home');
-  const tabs = { viaggio: vTrip, programma: vProgram, spese: vSpese, idee: vIdee, altro: vAltro };
-  app.innerHTML = tabs[ui.tab](t);
+  const tabs = { viaggio: vViaggio, spese: vSpese, todo: vTodo, assistente: vAssist };
+  app.innerHTML = (tabs[ui.tab] || vViaggio)(t);
   tabbar(true);
+  if (ui.scrollNow) { ui.scrollNow = false; const nl = document.querySelector('.nowline');
+    if (nl) window.scrollTo(0, Math.max(0, nl.getBoundingClientRect().top + window.scrollY - 300)); else window.scrollTo(0, 0); }
 }
 function tabbar(show) {
   const nb = $('#tabbar'); nb.hidden = !show; if (!show) return;
-  const T = [['viaggio', 'Viaggio', 'home'], ['programma', 'Programma', 'cal'], ['spese', 'Spese', 'card'], ['idee', 'Idee', 'pin'], ['altro', 'Altro', 'more']];
+  const T = [['viaggio', 'Viaggio', 'cal'], ['spese', 'Spese', 'card'], ['todo', 'To-do', 'check'], ['assistente', 'Assistente', 'chat']];
+  nb.style.gridTemplateColumns = `repeat(${T.length},minmax(0,1fr))`;
   nb.innerHTML = T.map(([k, l, i]) => `<button class="${ui.tab === k ? 'on' : ''}" onclick="A.tab('${k}')">${svg(i)}${l}</button>`).join('');
 }
 const head = (t, sub) => `<div class="top"><button class="iconbtn back" aria-label="Torna ai viaggi" onclick="A.home()">${svg('back')}</button>${sub || ''}</div>`;
@@ -169,19 +183,12 @@ function vHome() {
 }
 function cardNow(t) {
   const d = today(), n = diffDays(t.start, d) + 1, tot = nDays(t);
-  const todays = dayEntries(t, d);
-  const next = todays.timed.filter((e) => tmin(e.time) >= nowMin() - 30).slice(0, 2);
-  const lines = (next.length ? next : todays.timed.slice(-2)).map((e) => `<div class="row" style="gap:10px"><b style="width:44px">${e.time}</b><span>${esc(e.title)}</span></div>`).join('')
-    + todays.untimed.slice(0, 1).map((e) => `<div class="row" style="gap:10px"><b style="width:44px;color:#C9CFDC">poi</b><span>${esc(e.title)}</span></div>`).join('');
-  const st = stayOn(t, d);
-  const bt = budgetTot(t);
-  return `<div class="navy col" style="gap:12px">
+  const st = stayOn(t, d), bt = budgetTot(t);
+  return `<div class="navy col" role="button" tabindex="0" style="gap:12px;cursor:pointer" onclick="A.open('${t.id}')">
     <div class="between" style="align-items:flex-start"><div><div class="serif" style="font-size:26px">${esc(t.name)} ${t.emoji || ''}</div>
       <div class="small mut">giorno ${n} di ${tot}${st ? ' · stanotte: ' + esc(st.title) : ''}</div></div><span class="badge b-now">OGGI</span></div>
     <div style="display:grid;grid-template-columns:repeat(${tot},minmax(0,1fr));gap:3px">${Array.from({ length: tot }, (_, i) => `<span style="height:6px;border-radius:3px;background:${i + 1 < n ? '#F6F3EC' : i + 1 === n ? 'var(--hl)' : '#3E4A66'}"></span>`).join('')}</div>
-    ${lines ? `<div style="background:#2B3756;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;font-size:14px">${lines}</div>` : ''}
-    <div class="between small"><span><b>${eur(spent(t))}</b>${bt ? ' su ' + eur0(bt) : ''}</span>
-    <button onclick="A.open('${t.id}','programma')" style="background:none;border:none;color:#F6F3EC;font-weight:700;text-decoration:underline;min-height:44px;font-size:14px">Apri la giornata</button></div></div>`;
+    <div class="between small"><span><b>${eur(spent(t))}</b>${bt ? ' su ' + eur0(bt) : ''}</span><span class="row" style="gap:2px;font-weight:700">Apri ${svg('chev', 16)}</span></div></div>`;
 }
 function cardFut(t) {
   const g = diffDays(today(), t.start);
@@ -191,11 +198,19 @@ function cardFut(t) {
     <div style="background:var(--ink);color:var(--paper);border-radius:12px;padding:8px 12px;text-align:center"><div class="serif" style="font-size:22px;line-height:1">${g}</div><div style="font-size:10px;letter-spacing:1px">${g === 1 ? 'GIORNO' : 'GIORNI'}</div></div></button>`;
 }
 
-// --- Viaggio (prenotazioni)
-function vTrip(t) {
+// --- Viaggio (calendario + prenotazioni)
+function vViaggio(t) {
   const d = today(), ph = phase(t);
   const sub = ph === 'corso' ? `Giorno <span class="hl"><b>${diffDays(t.start, d) + 1} di ${nDays(t)}</b></span>`
     : ph === 'futuro' ? `Mancano <span class="hl"><b>${diffDays(d, t.start)} giorni</b></span>` : 'Viaggio concluso';
+  const body = ui.mode === 'periodo' ? vPeriod(t) : ui.mode === 'pren' ? bookingsList(t) : vDay(t);
+  return `${head(t, `<span class="row" style="gap:4px"><button class="iconbtn" aria-label="Modifica viaggio" onclick="A.tripForm('${t.id}')">${svg('edit', 20)}</button>${plusBtn('A.itemForm()', 'Aggiungi al viaggio')}</span>`)}
+  <h1>${esc(t.name)} ${t.emoji || ''}</h1>
+  <div class="between"><span class="mut" style="font-size:14px">${fmtRange(t.start, t.end)}</span><span style="font-size:14px">${sub}</span></div>
+  <div class="seg" style="margin-top:12px"><button class="${ui.mode === 'giorno' ? 'on' : ''}" onclick="A.mode('giorno')">Giorno</button><button class="${ui.mode === 'periodo' ? 'on' : ''}" onclick="A.mode('periodo')">Più giorni</button><button class="${ui.mode === 'pren' ? 'on' : ''}" onclick="A.mode('pren')">Prenotazioni</button></div>
+  ${body}`;
+}
+function bookingsList(t) {
   const groups = ['Trasporti', 'Alloggio', 'Esperienze', 'Cibo', 'Varie'].map((c) => {
     const its = t.items.filter((i) => i.cat === c).sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
     if (!its.length) return '';
@@ -203,13 +218,7 @@ function vTrip(t) {
     return `<div class="between" style="margin-top:8px"><span class="lab">${c === 'Alloggio' ? 'Alloggi' : c}</span><span class="small mut">${its.length} · ${eur(tot)}</span></div>${its.map((i) => itemRow(t, i)).join('')}`;
   }).join('');
   const tot = t.items.filter((i) => i.status !== 'da prenotare').reduce((a, i) => a + num(i.price), 0);
-  const ck = t.checklist || [];
-  return `${head(t, plusBtn(`A.itemForm()`, 'Aggiungi prenotazione'))}
-  <h1>${esc(t.name)} ${t.emoji || ''}</h1>
-  <div class="mut" style="font-size:14px">${fmtDay(t.start)} – ${fmtDay(t.end)}</div>
-  <div style="font-size:15px;margin-top:4px">${sub}</div>
-  <div class="chips" style="margin-top:12px"><button class="chip on">Prenotazioni · ${t.items.length}</button><button class="chip" onclick="A.tab('idee')">Idee · ${t.ideas.length}</button><button class="chip" onclick="A.tab('altro')">Checklist · ${ck.filter((c) => c.done).length}/${ck.length}</button></div>
-  <div class="col" style="margin-top:6px;gap:6px">${groups || '<div class="empty" style="margin-top:10px">Nessuna prenotazione. Tocca + per aggiungere voli, alloggi, ristoranti o biglietti.</div>'}</div>
+  return `<div class="col" style="margin-top:6px;gap:6px">${groups || '<div class="empty" style="margin-top:10px">Nessuna prenotazione. Tocca + per aggiungere voli, alloggi, ristoranti o biglietti.</div>'}</div>
   ${t.items.length ? `<div class="between" style="padding:12px 4px 0"><span class="mut">Totale prenotato</span><span class="serif" style="font-size:22px">${eur(tot)}</span></div>` : ''}`;
 }
 function itemRow(t, i) {
@@ -231,17 +240,20 @@ function itemRow(t, i) {
 // --- Programma
 function dayEntries(t, date) {
   const timed = [], untimed = [];
-  t.items.filter((i) => i.cat !== 'Alloggio' && i.date === date).forEach((i) =>
-    (i.time ? timed : untimed).push({ kind: 'item', id: i.id, title: i.title, time: i.time, endTime: i.endTime, cat: i.cat, sub: i.price ? eur(i.price) : '', done: i.done, todo: i.status === 'da prenotare' }));
-  t.ideas.filter((x) => x.date === date).forEach((x) =>
-    (x.time ? timed : untimed).push({ kind: 'idea', id: x.id, title: x.title, time: x.time, cat: x.cat, sub: 'idea', done: x.done }));
+  t.items.filter((i) => i.cat !== 'Alloggio' && i.date === date).forEach((i) => {
+    if (i.time) timed.push({ kind: 'item', id: i.id, title: i.title, time: i.time, endTime: i.endTime, cat: i.cat, sub: i.price ? eur(i.price) : '', done: i.done, todo: i.status === 'da prenotare' });
+    else if (!i.done) untimed.push({ kind: 'item', id: i.id, title: i.title, cat: i.cat, todo: i.status === 'da prenotare' });
+  });
+  (t.todos || []).filter((x) => x.date === date).forEach((x) => {
+    if (x.time) timed.push({ kind: 'todo', id: x.id, title: x.text, time: x.time, cat: 'Varie', sub: 'to-do', done: x.done });
+    else if (!x.done) untimed.push({ kind: 'todo', id: x.id, title: x.text, cat: 'Varie' });
+  });
   timed.sort((a, b) => a.time.localeCompare(b.time));
   return { timed, untimed };
 }
 function modeToggle() {
   return `<div class="seg" style="margin-top:10px"><button class="${ui.mode === 'giorno' ? 'on' : ''}" onclick="A.mode('giorno')">Giorno</button><button class="${ui.mode === 'periodo' ? 'on' : ''}" onclick="A.mode('periodo')">Viaggio intero</button></div>`;
 }
-function vProgram(t) { return ui.mode === 'periodo' ? vPeriod(t) : vDay(t); }
 function vDay(t) {
   const d = today();
   if (!ui.day || ui.day < t.start || ui.day > t.end) ui.day = d >= t.start && d <= t.end ? d : t.start;
@@ -256,18 +268,21 @@ function vDay(t) {
   const H0 = 7, H1 = 24, PX = 40;
   const y = (m) => ((m - H0 * 60) / 60) * PX;
   const hours = Array.from({ length: H1 - H0 }, (_, i) => `<div class="hour" style="height:${PX}px"><span style="display:inline-block;padding-top:3px">${pad(H0 + i)}:00</span></div>`).join('');
+  const nm = nowMin(), isToday = day === d;
+  let curId = null, nextId = null;
+  if (isToday) { timed.forEach((e) => { const a = tmin(e.time), b = tmin(e.endTime) || a + 60; if (a <= nm && nm < b && !curId) curId = e.id; if (a > nm && !nextId) nextId = e.id; }); }
   const evs = timed.map((e) => { const a = tmin(e.time), b = tmin(e.endTime) || a + 60;
-    return `<button class="ev" style="top:${y(a)}px;height:${Math.max(y(b) - y(a), 34)}px;background:${CATS[e.cat].bg};border-left-color:${CATS[e.cat].s}${e.done ? ';opacity:.6' : ''}" onclick="A.openEntry('${e.kind}','${e.id}')"><b>${esc(e.title)}</b><span>${e.time}${e.endTime ? ' – ' + e.endTime : ''}${e.sub ? ' · ' + esc(e.sub) : ''}${e.todo ? ' · da prenotare' : ''}</span></button>`; }).join('');
-  const nm = nowMin(); const now = day === d && nm >= H0 * 60 ? `<div class="nowline" style="top:${y(nm)}px"></div>` : '';
-  return `<div class="col" style="gap:0"><div class="small mut">${esc(t.name)} ${t.emoji || ''} · giorno ${n} di ${nDays(t)}</div>
-    <h1 style="font-size:26px">${GGL[D.getDay()]} <span class="hl">${D.getDate()} ${MML[D.getMonth()]}</span></h1></div>
-  ${modeToggle()}
+    const cur = e.id === curId, nx = !curId && e.id === nextId;
+    const tag = cur ? '<span class="badge" style="position:absolute;right:8px;top:6px;background:var(--ink);color:var(--paper)">ADESSO</span>' : nx ? '<span class="badge b-now" style="position:absolute;right:8px;top:6px">PROSSIMO</span>' : '';
+    const extra = cur ? ';outline:2px solid var(--ink);box-shadow:0 6px 18px rgba(31,42,68,.18);z-index:3' : nx ? ';outline:1.5px solid var(--ink)' : '';
+    return `<button class="ev" style="top:${y(a)}px;height:${Math.max(y(b) - y(a), 34)}px;background:${CATS[e.cat].bg};border-left-color:${CATS[e.cat].s}${e.done || (isToday && b <= nm) ? ';opacity:.6' : ''}${extra}" onclick="A.openEntry('${e.kind}','${e.id}')">${tag}<b>${esc(e.title)}</b><span>${e.time}${e.endTime ? ' – ' + e.endTime : ''}${e.sub ? ' · ' + esc(e.sub) : ''}${e.todo ? ' · da prenotare' : ''}</span></button>`; }).join(''); const now = day === d && nm >= H0 * 60 ? `<div class="nowline" style="top:${y(nm)}px"></div>` : '';
+  return `<div class="serif" style="font-size:20px;margin-top:14px">${GGL[D.getDay()]} <span class="hl">${D.getDate()} ${MML[D.getMonth()]}</span> <span class="mut" style="font-family:Karla,Arial,sans-serif;font-size:13px;font-weight:400">· giorno ${n} di ${nDays(t)}</span></div>
   <div class="dayhead" style="margin-top:10px;grid-template-columns:repeat(${strip.length},minmax(0,1fr))">${strip.map((x) => { const X = parse(x);
     return `<button class="daybtn ${x === day ? 'on' : ''} ${x < d && x !== day ? 'past' : ''}" onclick="A.day('${x}')"><small>${GG[X.getDay()].toUpperCase()}</small><b>${X.getDate()}</b></button>`; }).join('')}</div>
   ${st ? `<div class="band" style="margin-top:10px"><b>${esc(st.title)}</b><span>${lastNight ? 'ultima notte · check-out domani' : 'notte ' + (diffDays(st.date, day) + 1) + ' di ' + diffDays(st.date, st.endDate)}</span></div>` : ''}
   <div class="card" style="margin-top:8px;padding:10px 12px">
-    <div class="between"><span class="lab" style="font-size:11px">Da fare oggi</span><button class="chip" style="height:30px" onclick="A.ideaForm(null,'${day}')">+ Aggiungi</button></div>
-    ${untimed.length ? untimed.map((e) => `<label class="check"><input type="checkbox" ${e.done ? 'checked' : ''} onchange="A.toggleDone('${e.kind}','${e.id}')"><span class="${e.done ? 'done' : ''}">${esc(e.title)}${e.todo ? ' <span class="wavy small">da prenotare</span>' : ''}</span></label>`).join('') : '<div class="small mut" style="padding:6px 0">Niente in lista. Aggiungi un\'idea o un\'attività senza orario.</div>'}
+    <div class="between"><span class="lab" style="font-size:11px">Da fare oggi</span><button class="chip" style="height:30px" onclick="A.todoForm(null,'${day}')">+ Aggiungi</button></div>
+    ${untimed.length ? untimed.map((e) => `<label class="check"><input type="checkbox" ${e.done ? 'checked' : ''} onchange="A.toggleDone('${e.kind}','${e.id}')"><span class="${e.done ? 'done' : ''}">${esc(e.title)}${e.todo ? ' <span class="wavy small">da prenotare</span>' : ''}</span></label>`).join('') : '<div class="small mut" style="padding:6px 0">Niente in lista per oggi.</div>'}
   </div>
   <div class="timeline" style="margin-top:10px">${hours}${evs}${now}</div>`;
 }
@@ -295,9 +310,7 @@ function vPeriod(t) {
   const nm = nowMin(), ti = days.indexOf(d);
   const now = ti >= 0 && nm >= H0 * 60 ? `<div style="position:absolute;top:${y(nm)}px;height:2px;left:${left(ti)};width:${w};background:var(--terra);z-index:2"></div>` : '';
   const canPrev = ui.pStart > t.start, canNext = addDays(ui.pStart, N - 1) < t.end;
-  return `<div class="col" style="gap:0"><div class="small mut">${esc(t.name)} ${t.emoji || ''} · ${nDays(t)} giorni</div><h1 style="font-size:26px">${fmtRange(t.start, t.end)}</h1></div>
-  ${modeToggle()}
-  <div class="between" style="margin-top:6px"><button class="iconbtn" aria-label="Giorni precedenti" ${canPrev ? '' : 'disabled style="opacity:.3"'} onclick="A.shift(-${N})">${svg('left')}</button>
+  return `<div class="between" style="margin-top:6px"><button class="iconbtn" aria-label="Giorni precedenti" ${canPrev ? '' : 'disabled style="opacity:.3"'} onclick="A.shift(-${N})">${svg('left')}</button>
     <b style="font-size:14px">${fmtDay(days[0])} – ${fmtDay(days[N - 1])}</b>
     <button class="iconbtn" aria-label="Giorni successivi" ${canNext ? '' : 'disabled style="opacity:.3"'} onclick="A.shift(${N})">${svg('right')}</button></div>
   <div class="col" style="gap:4px;margin:0 -8px">
@@ -337,46 +350,64 @@ function vSpese(t) {
   <div class="navy between" style="margin-top:14px;padding:14px 16px"><div class="col" style="gap:4px"><span class="mut" style="font-size:11px;letter-spacing:1.2px;text-transform:uppercase">Saldo</span>
     <span>${debtor ? `${debtor} deve <b style="background:linear-gradient(transparent 55%,var(--terra) 55%);padding:0 2px">${eur(owe)}</b> a ${cred}` : 'Siete pari'}</span></div>
     ${debtor ? `<button onclick="A.settle()" style="height:36px;padding:0 12px;border-radius:18px;border:1px solid #C9CFDC;background:transparent;color:var(--paper);font-size:13px">Pareggiato</button>` : ''}</div>
-  <div class="sec"><div class="between"><span class="lab">Budget per categoria</span><button onclick="A.budgetForm()" style="background:none;border:none;color:var(--terra);font-weight:700;min-height:44px;font-size:14px">${bt ? 'Modifica budget' : 'Imposta budget'}</button></div>${bars || '<div class="small mut">Ancora nessuna spesa.</div>'}</div>
+  ${bt ? `<details class="card" style="margin-top:14px" ${ui.budOpen ? 'open' : ''} ontoggle="A.budToggle(this.open)"><summary class="between" style="padding:12px 16px;list-style:none;cursor:pointer;min-height:44px">
+      <span class="lab">Budget per categoria</span><span class="row small" style="gap:4px">${Math.round((sp / bt) * 100)}% <span style="display:inline-block;transform:rotate(${ui.budOpen ? 90 : 0}deg)">${svg('chev', 16)}</span></span></summary>
+      <div class="col" style="padding:0 16px 14px;gap:10px">${bars}<button class="btn ghost" style="height:40px" onclick="A.budgetForm()">Modifica budget</button></div></details>`
+    : `<button onclick="A.budgetForm()" class="btn ghost" style="margin-top:14px;height:44px">Imposta un budget (facoltativo)</button>`}
   <div class="col" style="gap:6px;margin-top:10px">${list}</div>`;
 }
 
-// --- Idee
-function vIdee(t) {
-  const f = ui.ideaFilter || 'Tutte';
-  const ideas = t.ideas.filter((x) => f === 'Tutte' || x.cat === f);
-  const free = ideas.filter((x) => !x.date), planned = ideas.filter((x) => x.date).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-  const card = (x) => `<div class="card pad col" style="gap:8px">
-    <div class="between" style="align-items:flex-start"><div class="row" style="align-items:flex-start"><span class="dot" style="margin-top:5px;background:${CATS[x.cat].s}"></span>
-      <div><div class="t1 ${x.done ? 'done' : ''}">${esc(x.title)}</div><div class="t2">${x.cat}${x.date ? ' · ' + fmtDay(x.date) + (x.time ? ' ' + x.time : '') : ''}</div>
-      ${x.link ? `<a href="${esc(x.link)}" target="_blank" rel="noopener" class="small" style="word-break:break-all">${esc(x.link.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40))}</a>` : ''}</div></div>
-      <button class="chip" style="height:30px" onclick="A.ideaForm('${x.id}')">Modifica</button></div>
-    ${!x.date ? `<button class="btn ghost" style="height:40px" onclick="A.assign('${x.id}')">Aggiungi al programma</button>` : ''}</div>`;
+// --- To-do
+function vTodo(t) {
+  const all = t.todos || [], open = all.filter((x) => !x.done), done = all.filter((x) => x.done);
+  const nodate = open.filter((x) => !x.date), dated = open.filter((x) => x.date).sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
+  const dates = [...new Set(dated.map((x) => x.date))];
+  const row = (x) => `<div class="between" style="padding:6px 14px"><label class="check"><input type="checkbox" onchange="A.todoDone('${x.id}')"><span>${esc(x.text)}${x.time ? ` <span class="mut small">${x.time}</span>` : ''}</span></label>
+    <button class="iconbtn" aria-label="Modifica" style="color:var(--mut)" onclick="A.todoForm('${x.id}')">${svg('edit', 18)}</button></div>`;
+  const opts = ['<option value="">Senza data</option>'].concat(Array.from({ length: nDays(t) }, (_, i) => addDays(t.start, i)).map((x) => `<option value="${x}">${fmtDay(x)}</option>`)).join('');
   return `${head(t)}
-  <div class="small mut">${esc(t.name)} ${t.emoji || ''} · idee</div>
-  <h1>Cosa <span class="hl">vogliamo fare</span></h1>
-  <div class="field" style="margin-top:14px"><label for="quick">Salva un'idea</label>
-    <div class="row"><input id="quick" class="inp" placeholder="Incolla un link o scrivi un nome" onkeydown="if(event.key==='Enter')A.quickIdea()"><button class="plus" style="border-radius:12px;width:48px;height:48px;background:var(--ink)" aria-label="Aggiungi idea" onclick="A.quickIdea()">${svg('plus', 20, 2.2)}</button></div></div>
-  <div class="chips" style="margin-top:12px">${['Tutte', ...CAT_NAMES].map((c) => `<button class="chip ${f === c ? 'on' : ''}" onclick="A.ideaFilter('${c}')">${c}</button>`).join('')}</div>
-  ${free.length ? `<div class="sec"><div class="lab">Da piazzare · ${free.length}</div>${free.map(card).join('')}</div>` : ''}
-  ${planned.length ? `<div class="sec"><div class="lab">Nel programma · ${planned.length}</div>${planned.map(card).join('')}</div>` : ''}
-  ${!ideas.length ? '<div class="sec"><div class="empty">Ancora nessuna idea. Salvate qui posti, mostre e ristoranti man mano che li trovate, poi spostateli in un giorno del programma.</div></div>' : ''}`;
+  <h1>To-do <span class="hl">list</span></h1>
+  <div class="small mut">${esc(t.name)} ${t.emoji || ''} · ${open.length} da fare</div>
+  <div class="card pad col" style="margin-top:14px;gap:8px">
+    <input id="tdNew" class="inp" placeholder="Cosa c'è da fare?" onkeydown="if(event.key==='Enter')A.todoAdd()">
+    <div class="row"><select id="tdDate" class="inp" style="flex:1">${opts}</select><button class="plus" style="border-radius:12px;width:48px;height:48px;background:var(--ink)" aria-label="Aggiungi" onclick="A.todoAdd()">${svg('plus', 20, 2.2)}</button></div>
+  </div>
+  ${nodate.length ? `<div class="sec"><div class="lab">Senza data · ${nodate.length}</div><div class="card list">${nodate.map(row).join('')}</div></div>` : ''}
+  ${dates.map((x) => `<div class="sec"><div class="lab">${x === today() ? 'Oggi · ' : ''}${fmtDay(x)}</div><div class="card list">${dated.filter((y) => y.date === x).map(row).join('')}</div></div>`).join('')}
+  ${!open.length ? '<div class="sec"><div class="empty">Tutto fatto. Le voci spuntate spariscono da sole.</div></div>' : ''}
+  ${done.length ? `<div class="sec"><button onclick="A.showDone()" style="background:none;border:none;color:var(--mut);font-size:14px;min-height:44px;text-align:left">${ui.showDone ? 'Nascondi' : 'Mostra'} completate (${done.length})</button>
+    ${ui.showDone ? `<div class="card list">${done.map((x) => `<div class="between" style="padding:10px 14px"><span class="done">${esc(x.text)}</span><button class="chip" style="height:30px" onclick="A.todoUndo('${x.id}')">Ripristina</button></div>`).join('')}</div>` : ''}</div>` : ''}`;
 }
 
-// --- Altro
-function vAltro(t) {
-  const ck = t.checklist || [];
-  return `${head(t)}<h1>${esc(t.name)} ${t.emoji || ''}</h1>
-  <div class="sec"><div class="lab">Checklist</div><div class="card pad col" style="gap:4px">
-    ${ck.map((c) => `<div class="between"><label class="check"><input type="checkbox" ${c.done ? 'checked' : ''} onchange="A.ck('${c.id}')"><span class="${c.done ? 'done' : ''}">${esc(c.text)}</span></label><button class="iconbtn" aria-label="Elimina voce" onclick="A.ckDel('${c.id}')" style="color:var(--mut);font-size:18px">×</button></div>`).join('')}
-    <div class="row" style="margin-top:6px"><input id="ckNew" class="inp" placeholder="Nuova voce" onkeydown="if(event.key==='Enter')A.ckAdd()"><button class="plus" style="border-radius:12px;width:48px;height:48px;background:var(--ink)" aria-label="Aggiungi voce" onclick="A.ckAdd()">${svg('plus', 20, 2.2)}</button></div></div></div>
-  <div class="sec"><div class="lab">Viaggio</div>
-    <button class="btn ghost" onclick="A.budgetForm()">Budget</button>
-    <button class="btn ghost" onclick="A.tripForm('${t.id}')">Modifica nome e date</button>
-    <button class="btn danger" onclick="A.delTrip('${t.id}')">Elimina viaggio</button></div>`;
+// --- Assistente
+function vAssist(t) {
+  const ex = ['Quanto può essere grande il bagaglio a mano?', 'Ristoranti aperti stasera vicino all\'alloggio', 'Come ci muoviamo dall\'aeroporto al centro?', 'Cosa fare domani se piove?'];
+  return `${head(t)}
+  <h1>Assistente <span class="hl">di viaggio</span></h1>
+  <div class="small mut">${esc(t.name)} ${t.emoji || ''}</div>
+  <div class="navy col" style="margin-top:14px;gap:8px"><b class="serif" style="font-size:20px">In arrivo</b>
+    <div style="font-size:14px;line-height:1.45">Qui potrete chiedere qualsiasi cosa sul viaggio: bagagli, mezzi, ristoranti, hotel, bar vicino a dove siete. Risponde cercando online e conosce già il vostro programma e le prenotazioni.</div>
+    <div class="small mut">Si attiva dopo la sincronizzazione tra i vostri telefoni.</div></div>
+  <div class="sec"><div class="lab">Esempi di domande</div>${ex.map((q) => `<div class="card" style="padding:12px 14px;font-size:15px;color:var(--mut)">“${q}”</div>`).join('')}</div>`;
 }
 
 // ---------- fogli (form)
+function todoForm(id, date) {
+  const t = trip(ui.tripId); const x = id ? t.todos.find((y) => y.id === id) : null;
+  sheet(`${sheetHead(x ? 'Modifica to-do' : 'Nuovo to-do', `A.saveTodo('${id || ''}')`)}
+  <div class="field"><label for="f_text">Cosa</label><input id="f_text" class="inp" value="${esc(x?.text || '')}"></div>
+  <div class="grid2"><div class="field"><label for="f_date">Giorno (facoltativo)</label><input id="f_date" type="date" class="inp" value="${x?.date || date || ''}" min="${t.start}" max="${t.end}"></div>
+    <div class="field"><label for="f_time">Ora (facoltativa)</label><input id="f_time" type="time" class="inp" value="${x?.time || ''}"></div></div>
+  <div class="small mut">Con l'ora compare nel calendario, senza ora in "Da fare oggi".</div>
+  ${x ? `<button class="btn danger" onclick="A.todoDel('${x.id}')">Elimina</button>` : ''}`);
+  setTimeout(() => { const el = document.getElementById('f_text'); if (el && !x) el.focus(); }, 50);
+}
+function saveTodo(id) {
+  const t = trip(ui.tripId); const text = val('f_text'); if (!text) return toast('Scrivi cosa c\'è da fare');
+  const o = { text, date: val('f_date'), time: val('f_time') };
+  if (id) Object.assign(t.todos.find((y) => y.id === id), o); else t.todos.push({ id: uid(), done: false, ...o });
+  save(); closeSheet(); render();
+}
 function sheet(html) { const s = $('#sheet'); s.innerHTML = `<div class="panel" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div>`; s.hidden = false;
   s.onclick = (e) => { if (e.target === s) closeSheet(); }; }
 function closeSheet() { const s = $('#sheet'); s.hidden = true; s.innerHTML = ''; }
@@ -396,15 +427,16 @@ function tripForm(id) {
   sheet(`${sheetHead(t ? 'Modifica viaggio' : 'Nuovo viaggio', `A.saveTrip('${id || ''}')`)}
   <div class="field"><label for="f_name">Destinazione</label><input id="f_name" class="inp" value="${esc(t?.name || '')}" placeholder="Es. Londra"></div>
   <div class="field"><label for="f_emoji">Emoji (facoltativa)</label><input id="f_emoji" class="inp" value="${esc(t?.emoji || '')}" placeholder="✈️"></div>
-  <div class="grid2"><div class="field"><label for="f_s">Partenza</label><input id="f_s" type="date" class="inp" value="${s}"></div><div class="field"><label for="f_e">Ritorno</label><input id="f_e" type="date" class="inp" value="${e}"></div></div>`);
+  <div class="grid2"><div class="field"><label for="f_s">Partenza</label><input id="f_s" type="date" class="inp" value="${s}"></div><div class="field"><label for="f_e">Ritorno</label><input id="f_e" type="date" class="inp" value="${e}"></div></div>
+  ${t ? `<button class="btn ghost" onclick="A.close();A.open('${t.id}','spese');A.budgetForm()">Budget</button><button class="btn danger" onclick="A.delTrip('${t.id}')">Elimina viaggio</button>` : ''}`);
 }
 function saveTrip(id) {
   const name = val('f_name'), s = val('f_s'), e = val('f_e');
   if (!name || !s || !e) return toast('Servono destinazione e date');
   if (e < s) return toast('Il ritorno è prima della partenza');
   if (id) Object.assign(trip(id), { name, emoji: val('f_emoji'), start: s, end: e });
-  else { const t = { id: uid(), name, emoji: val('f_emoji'), start: s, end: e, people: PEOPLE.slice(), budget: {}, items: [], expenses: [], ideas: [], checklist: [] }; db.trips.push(t); ui.tripId = t.id; }
-  save(); closeSheet(); if (!id) go('trip', { tab: 'viaggio', day: null, pStart: null }); else render();
+  else { const t = { id: uid(), name, emoji: val('f_emoji'), start: s, end: e, people: PEOPLE.slice(), budget: {}, items: [], expenses: [], ideas: [], checklist: [], todos: [] }; db.trips.push(t); ui.tripId = t.id; }
+  save(); closeSheet(); if (!id) go('trip', { tab: 'viaggio', mode: 'pren', day: null, pStart: null }); else render();
 }
 
 function itemForm(id) {
@@ -539,7 +571,7 @@ function importData(input) {
   const f = input.files[0]; if (!f) return; const r = new FileReader();
   r.onload = () => { try { const data = JSON.parse(r.result); const trips = data.trips || (data.trip ? [data.trip] : []);
       if (!trips.length) throw new Error('vuoto');
-      let n = 0; trips.forEach((t) => { if (!t.id) t.id = uid(); ['items', 'expenses', 'ideas', 'checklist'].forEach((k) => { t[k] = t[k] || []; }); t.budget = t.budget || {};
+      let n = 0; trips.forEach((t) => { if (!t.id) t.id = uid(); migrate(t);
         const i = db.trips.findIndex((x) => x.id === t.id); if (i >= 0) db.trips[i] = t; else db.trips.push(t); n++; });
       save(); closeSheet(); go('home'); toast(`${n} viaggi caricati`);
     } catch (e) { toast('File non valido'); } };
@@ -569,15 +601,26 @@ function viewFile(i) { const f = draftFiles[i]; if (!f) return;
 
 // ---------- varie
 let toastT;
-function toast(msg) { const el = $('#toast'); el.textContent = msg; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 2200); }
+let toastFn = null;
+function toast(msg, action, fn) { const el = $('#toast'); toastFn = fn || null;
+  el.innerHTML = esc(msg) + (action ? ` <button onclick="A.toastAct()" style="margin-left:10px;background:none;border:none;color:var(--hl);font-weight:700;font-size:14px;min-height:32px">${esc(action)}</button>` : '');
+  el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; toastFn = null; }, action ? 4000 : 2200); }
 
 // ---------- API usata dai pulsanti
 window.A = {
   home: () => go('home'),
-  open: (id, tab) => go('trip', { tripId: id, tab: tab || 'viaggio', day: null, pStart: null, mode: 'giorno' }),
-  tab: (k) => { ui.tab = k; render(); window.scrollTo(0, 0); },
-  mode: (m) => { ui.mode = m; render(); },
-  day: (d, fromPeriod) => { ui.day = d; if (fromPeriod) ui.mode = 'giorno'; render(); },
+  open: (id, tab) => { const t = trip(id); go('trip', { tripId: id, tab: tab || 'viaggio', day: null, pStart: null, mode: t && phase(t) === 'corso' ? 'giorno' : 'pren', scrollNow: true }); },
+  tab: (k) => { ui.tab = k; ui.scrollNow = k === 'viaggio'; window.scrollTo(0, 0); render(); },
+  mode: (m) => { ui.mode = m; ui.scrollNow = m === 'giorno'; render(); },
+  budToggle: (o) => { ui.budOpen = o; const c = document.querySelector('details.card summary span:last-child span'); if (c) c.style.transform = `rotate(${o ? 90 : 0}deg)`; },
+  todoForm, saveTodo,
+  todoAdd: () => { const v = val('tdNew'); if (!v) return; const t = trip(ui.tripId); t.todos.push({ id: uid(), text: v, date: val('tdDate'), time: '', done: false }); save(); render(); },
+  todoDone: (id) => { const t = trip(ui.tripId); const x = t.todos.find((y) => y.id === id); x.done = true; save(); render(); toast('Fatto', 'Annulla', () => { x.done = false; save(); render(); }); },
+  todoUndo: (id) => { const t = trip(ui.tripId); t.todos.find((y) => y.id === id).done = false; save(); render(); },
+  todoDel: (id) => { const t = trip(ui.tripId); t.todos = t.todos.filter((y) => y.id !== id); save(); closeSheet(); render(); },
+  showDone: () => { ui.showDone = !ui.showDone; render(); },
+  toastAct: () => { const f = toastFn; $('#toast').hidden = true; toastFn = null; if (f) f(); },
+  day: (d, fromPeriod) => { ui.day = d; if (fromPeriod) ui.mode = 'giorno'; ui.scrollNow = d === today(); render(); },
   shift: (n) => { ui.pStart = addDays(ui.pStart, n); render(); },
   close: closeSheet, seg: (b) => { b.parentNode.querySelectorAll('button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); },
   catColor: (c) => CATS[c].s,
@@ -587,8 +630,9 @@ window.A = {
   delExp: (id) => { if (!confirm('Eliminare questa spesa?')) return; const t = trip(ui.tripId); t.expenses = t.expenses.filter((x) => x.id !== id); save(); closeSheet(); render(); },
   delIdea: (id) => { const t = trip(ui.tripId); t.ideas = t.ideas.filter((x) => x.id !== id); save(); closeSheet(); render(); },
   delTrip: (id) => { if (!confirm('Eliminare tutto il viaggio? Non si può annullare.')) return; db.trips = db.trips.filter((x) => x.id !== id); save(); go('home'); },
-  openEntry: (kind, id) => kind === 'item' ? itemForm(id) : ideaForm(id),
-  toggleDone: (kind, id) => { const t = trip(ui.tripId); const o = (kind === 'item' ? t.items : t.ideas).find((x) => x.id === id); o.done = !o.done; save(); render(); },
+  openEntry: (kind, id) => kind === 'item' ? itemForm(id) : todoForm(id),
+  toggleDone: (kind, id) => { const t = trip(ui.tripId); const o = (kind === 'item' ? t.items : t.todos).find((x) => x.id === id); o.done = !o.done; save(); render();
+    if (o.done) toast('Fatto', 'Annulla', () => { o.done = false; save(); render(); }); },
   quickIdea: () => { const v = val('quick'); if (!v) return; const t = trip(ui.tripId); const isLink = /^https?:\/\//i.test(v);
     t.ideas.push({ id: uid(), title: isLink ? titleFromLink(v) : v, link: isLink ? v : '', cat: 'Esperienze', date: '', time: '', done: false }); save(); render(); toast('Idea salvata'); },
   ideaFilter: (c) => { ui.ideaFilter = c; render(); },
@@ -598,7 +642,7 @@ window.A = {
   ck: (id) => { const t = trip(ui.tripId); const c = t.checklist.find((x) => x.id === id); c.done = !c.done; save(); render(); },
   ckAdd: () => { const v = val('ckNew'); if (!v) return; const t = trip(ui.tripId); (t.checklist = t.checklist || []).push({ id: uid(), text: v, done: false }); save(); render(); },
   ckDel: (id) => { const t = trip(ui.tripId); t.checklist = t.checklist.filter((x) => x.id !== id); save(); render(); },
-  addDemo: () => { db.trips.push(demoTrip()); save(); closeSheet(); go('home'); },
+  addDemo: () => { db.trips.push(migrate(demoTrip())); save(); closeSheet(); go('home'); },
 };
 
 load(); render();
