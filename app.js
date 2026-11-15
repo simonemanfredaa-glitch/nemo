@@ -72,6 +72,85 @@ const fmtRange = (a, b) => { const A = parse(a), B = parse(b);
 const tmin = (t) => { if (!t) return null; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 
+// ---------- Google Maps
+const GKEY = 'nemo.gkey';
+const gkey = () => { try { return localStorage.getItem(GKEY) || ''; } catch (e) { return ''; } };
+let mapsP = null;
+function loadMaps() {
+  if (!gkey()) return Promise.reject(new Error('nokey'));
+  if (mapsP) return mapsP;
+  mapsP = new Promise((res, rej) => {
+    window.__nemoMaps = () => res(window.google);
+    const sc = document.createElement('script');
+    sc.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(gkey())}&loading=async&language=it&callback=__nemoMaps`;
+    sc.async = true; sc.onerror = () => { mapsP = null; rej(new Error('load')); }; document.head.appendChild(sc);
+  });
+  return mapsP;
+}
+// quali campi cercano su Google, per categoria
+const PLACE_FIELDS = {
+  Trasporti: { from: 'station', to: 'station' },
+  Alloggio: { title: 'name', address: 'addr' },
+  Cibo: { title: 'name', address: 'addr' },
+  Esperienze: { title: 'name', address: 'addr' },
+};
+const STATION_TYPES = ['airport', 'train_station', 'bus_station', 'transit_station', 'ferry_terminal'];
+function gmapsUrl(f, label) {
+  const q = f.address || label || '';
+  return f.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}${f.placeId ? '&query_place_id=' + f.placeId : ''}`;
+}
+function gdirUrl(f, label) {
+  const q = f.address || label || '';
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}${f.placeId ? '&destination_place_id=' + f.placeId : ''}`;
+}
+let pacTimer = null, pacToken = null, pacReq = 0;
+function attachPlaces(blk) {
+  if (!gkey() || !blk) return;
+  const c = blk.dataset.cat, map = PLACE_FIELDS[c]; if (!map) return;
+  Object.entries(map).forEach(([k, kind]) => {
+    const inp = blk.querySelector(`[data-k="${k}"]`); if (!inp || inp.dataset.pac) return;
+    inp.dataset.pac = '1'; inp.setAttribute('autocomplete', 'off');
+    inp.closest('.field').classList.add('gfield');
+    inp.placeholder = kind === 'station' ? 'Cerca aeroporto, stazione, fermata…' : kind === 'name' ? 'Cerca il posto su Google Maps…' : 'Cerca indirizzo o nome del posto…';
+    const box = document.createElement('div'); box.className = 'pac'; box.hidden = true; inp.insertAdjacentElement('afterend', box);
+    inp.addEventListener('input', () => { clearTimeout(pacTimer); const q = inp.value.trim();
+      if (q.length < 3) { box.hidden = true; return; } pacTimer = setTimeout(() => pacSearch(inp, box, q, kind, blk), 250); });
+    inp.addEventListener('blur', () => setTimeout(() => { box.hidden = true; }, 250));
+  });
+}
+async function pacSearch(inp, box, q, kind, blk) {
+  const my = ++pacReq;
+  try {
+    await loadMaps();
+    const { AutocompleteSessionToken, AutocompleteSuggestion } = await google.maps.importLibrary('places');
+    if (!pacToken) pacToken = new AutocompleteSessionToken();
+    const req = { input: q, sessionToken: pacToken, language: 'it' };
+    if (kind === 'station') req.includedPrimaryTypes = STATION_TYPES;
+    const { suggestions } = await AutocompleteSuggestion.fetchAutocompleteSuggestions(req);
+    if (my !== pacReq) return;
+    const preds = suggestions.map((x) => x.placePrediction).filter(Boolean).slice(0, 5);
+    if (!preds.length) { box.hidden = true; return; }
+    box.innerHTML = preds.map((p, i) => `<button type="button" data-i="${i}"><b>${esc(p.mainText ? p.mainText.text : p.text.toString())}</b><span>${esc(p.secondaryText ? p.secondaryText.text : '')}</span></button>`).join('') + '<div class="pac-g">Risultati da Google Maps</div>';
+    box.hidden = false;
+    box.querySelectorAll('button').forEach((b) => b.addEventListener('mousedown', (ev) => { ev.preventDefault(); pacPick(preds[+b.dataset.i], inp, box, kind, blk); }));
+  } catch (e) { box.hidden = true; if (e.message !== 'nokey') toast('Google Maps non risponde: controlla la chiave'); }
+}
+async function pacPick(pred, inp, box, kind, blk) {
+  box.hidden = true;
+  try {
+    const place = pred.toPlace();
+    await place.fetchFields({ fields: ['id', 'displayName', 'formattedAddress', 'location', 'nationalPhoneNumber', 'googleMapsURI'] });
+    pacToken = null;
+    const set = (k, v, force) => { const el = blk.querySelector(`[data-k="${k}"]`); if (el && v && (force || !el.value)) el.value = v; };
+    if (kind === 'station') { inp.value = place.displayName || inp.value; return; }
+    if (kind === 'name') { inp.value = place.displayName || inp.value; set('address', place.formattedAddress, true); }
+    else { inp.value = place.formattedAddress || inp.value; set('title', place.displayName); }
+    set('phone', place.nationalPhoneNumber);
+    blk.dataset.placeId = place.id || ''; blk.dataset.mapsUrl = place.googleMapsURI || '';
+    if (place.location) { blk.dataset.lat = place.location.lat(); blk.dataset.lng = place.location.lng(); }
+  } catch (e) { toast('Non riesco a leggere il posto da Google'); }
+}
+
 // ---------- dati
 let db;
 function load() {
@@ -433,15 +512,18 @@ function entryForm(id) {
   <div class="field"><label>Pagato da</label>${segH('paid', t.people.map((p) => [p, p]), i?.paidBy || t.people[0])}</div>
   ${t.people.length > 1 ? `<div class="field"><label>Per chi</label>${segH('splitmode', [['all', t.people.length === 2 ? '50/50' : 'Tutti'], ['some', 'Solo alcuni']], split === 'all' ? 'all' : 'some')}
     <div id="splitPick" ${split === 'all' ? 'hidden' : ''} style="margin-top:6px">${multiH('splitp', t.people, split === 'all' ? [] : split)}</div></div>` : ''}
-  <details class="card" style="padding:0 14px" ${i && (i.code || i.link || i.note || (i.files || []).length) ? 'open' : ''}><summary style="min-height:46px;display:flex;align-items:center;font-weight:700;font-size:14px;cursor:pointer">Altri dettagli: codice, link, allegati, note</summary>
+  <details class="card" style="padding:0 14px" ${i && (i.code || i.link || i.note || (i.files || []).length) ? 'open' : ''}><summary class="more-sum"><span class="more-ic">${svg('plus', 16, 2.4)}</span><span>Aggiungi dettagli</span><span class="mut" style="font-weight:400;font-size:13px">codice, link, foto, note</span></summary>
     <div class="col" style="gap:12px;padding-bottom:14px">
       <div class="grid2"><div class="field"><label for="f_code">Codice conferma</label><input id="f_code" class="inp" value="${esc(i?.code || '')}"></div>
       <div class="field"><label for="f_link">Link</label><input id="f_link" class="inp" value="${esc(i?.link || '')}" placeholder="https://"></div></div>
       ${filesBlock(draftFiles)}
       <div class="field"><label for="f_note">Note</label><textarea id="f_note" class="inp">${esc(i?.note || '')}</textarea></div></div></details>
-  ${i && (i.f?.address || i.link) ? `<div class="grid2">${i.f?.address ? `<a class="btn ghost" style="display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none" target="_blank" rel="noopener" href="https://maps.apple.com/?q=${encodeURIComponent(i.f.address)}">${svg('pin', 18)} Apri in Maps</a>` : '<span></span>'}${i.link ? `<a class="btn ghost" style="display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none" target="_blank" rel="noopener" href="${esc(i.link)}">${svg('link', 18)} Apri link</a>` : ''}</div>` : ''}
+  ${i && (i.f?.address || i.f?.placeId) ? `<div class="grid2"><a class="btn ghost gbtn" target="_blank" rel="noopener" href="${gmapsUrl(i.f, i.title)}">${svg('pin', 18)} Google Maps</a><a class="btn ghost gbtn" target="_blank" rel="noopener" href="${gdirUrl(i.f, i.title)}">${svg('right', 18)} Indicazioni</a></div>` : ''}
+  ${i && i.link ? `<a class="btn ghost gbtn" target="_blank" rel="noopener" href="${esc(i.link)}">${svg('link', 18)} Apri link prenotazione</a>` : ''}
   <button class="btn" onclick="A.saveEntry('${id || ''}')">Salva</button>
   ${i ? `<button class="btn danger" onclick="A.delEntry('${i.id}')">Elimina</button>` : ''}`);
+  pacToken = null; attachPlaces(document.querySelector(`.catblock[data-cat="${ui.formCat}"]`));
+  if (i && i.cat === ui.formCat) { const b = document.querySelector(`.catblock[data-cat="${ui.formCat}"]`); ['placeId', 'mapsUrl', 'lat', 'lng'].forEach((k) => { if (i.f[k]) b.dataset[k] = i.f[k]; }); }
 }
 function setCat(c) {
   const prev = document.querySelector(`.catblock[data-cat="${ui.formCat}"]`); const next = document.querySelector(`.catblock[data-cat="${c}"]`);
@@ -449,12 +531,13 @@ function setCat(c) {
   ['title', 'date', 'time', 'endTime'].forEach((k) => { const a = prev && prev.querySelector(`[data-k="${k}"]`), b = next.querySelector(`[data-k="${k}"]`); if (a && b && a.value && !b.value) b.value = a.value; });
   document.querySelectorAll('.catblock').forEach((b) => { b.hidden = b.dataset.cat !== c; });
   document.querySelectorAll('.catchip').forEach((b) => b.classList.toggle('on', b.dataset.c === c));
-  ui.formCat = c;
+  ui.formCat = c; attachPlaces(next);
 }
 function saveEntry(id) {
   const t = trip(ui.tripId), c = ui.formCat, blk = document.querySelector(`.catblock[data-cat="${c}"]`);
   const g = (k) => { const el = blk.querySelector(`[data-k="${k}"]`); return el ? el.value.trim() : ''; };
   const f = {}; FIELDS[c].forEach(([k, , type]) => { if (type === 'kind') f.kind = segVal('kind_' + c); else if (!['title', 'date', 'time', 'endDate', 'endTime'].includes(k)) f[k] = g(k); });
+  ['placeId', 'mapsUrl', 'lat', 'lng'].forEach((k) => { if (blk.dataset[k]) f[k] = blk.dataset[k]; });
   let title = g('title');
   if (c === 'Trasporti') title = [f.kind && f.kind !== 'Taxi / altro' ? f.kind : '', f.from && f.to ? `${f.from} → ${f.to}` : f.from || f.to || '', f.company ? '· ' + f.company : ''].filter(Boolean).join(' ') || f.kind || 'Trasporto';
   const price = numIn(val('f_amt'));
@@ -557,7 +640,10 @@ function settings() {
   <button class="btn ghost" onclick="A.exportData()">Scarica backup</button>
   <label class="btn ghost" style="display:flex;align-items:center;justify-content:center;position:relative">Carica backup o file di import<input type="file" accept="application/json,.json" style="position:absolute;inset:0;opacity:0" onchange="A.importData(this)"></label>
   <button class="btn ghost" onclick="A.addDemo()">Aggiungi viaggio di esempio</button>
-  <div class="small mut">NEMO · prototipo v3</div>`);
+  <div class="field"><label for="f_gkey">Chiave Google Maps</label>
+    <div class="row"><input id="f_gkey" class="inp" value="${esc(gkey())}" placeholder="Incolla qui la chiave AIza…" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="chip" style="height:48px" onclick="A.saveKey()">Salva</button></div>
+    <div class="small mut">${gkey() ? '✓ Ricerca su Google Maps attiva' : 'Serve per cercare aeroporti, stazioni, hotel e ristoranti mentre scrivi.'}</div></div>
+  <div class="small mut">NEMO · prototipo v4</div>`);
 }
 function exportData() {
   const blob = new Blob([JSON.stringify(db, null, 1)], { type: 'application/json' });
@@ -614,6 +700,7 @@ window.A = {
   tripForm, saveTrip, entryForm, saveEntry, setCat, noteForm, saveNote, noteToEntry, todoForm, saveTodo, budgetForm, bcalc, saveBudget,
   settings, exportData, importData, addFiles, viewFile,
   rmFile: (i) => { draftFiles.splice(i, 1); refreshThumbs(); },
+  saveKey: () => { const v = val('f_gkey'); try { if (v) localStorage.setItem(GKEY, v); else localStorage.removeItem(GKEY); } catch (e) {} mapsP = null; toast(v ? 'Chiave salvata' : 'Chiave rimossa'); settings(); },
   pplAdd: () => { draftPeople.push(''); document.getElementById('pplBox').innerHTML = pplRows(); const ins = document.querySelectorAll('#pplBox input'); ins[ins.length - 1].focus(); },
   pplDel: (i) => { draftPeople.splice(i, 1); document.getElementById('pplBox').innerHTML = pplRows(); },
   pplSet: (i, v) => { draftPeople[i] = v; },
