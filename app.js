@@ -362,8 +362,9 @@ function vAssist(t) {
 
 // ---------- fogli (form)
 function sheet(html) { const s = $('#sheet'); s.innerHTML = `<div class="panel" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div>`; s.hidden = false;
+  document.body.classList.add('lock'); const p = s.querySelector('.panel'); p.scrollTop = 0; requestAnimationFrame(() => { p.scrollTop = 0; });
   s.onclick = (e) => { if (e.target === s) closeSheet(); }; }
-function closeSheet() { const s = $('#sheet'); s.hidden = true; s.innerHTML = ''; }
+function closeSheet() { const s = $('#sheet'); s.hidden = true; s.innerHTML = ''; document.body.classList.remove('lock'); }
 const val = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
 const sheetHead = (title, saveFn) => `<div class="between"><button onclick="A.close()" style="background:none;border:none;color:var(--mut);min-height:44px;font-size:15px">Annulla</button><b class="serif" style="font-size:18px">${title}</b><button onclick="${saveFn}" style="background:none;border:none;color:var(--terra);font-weight:700;min-height:44px;font-size:15px">Salva</button></div>`;
 const segH = (name, opts, cur) => `<div class="seg" data-seg="${name}" style="flex-wrap:wrap">${opts.map(([v, l]) => `<button type="button" class="${v === cur ? 'on' : ''}" data-v="${esc(v)}" onclick="A.seg(this)">${l}</button>`).join('')}</div>`;
@@ -472,7 +473,7 @@ function noteForm(id, date) {
   <textarea id="f_notetext" class="notearea" placeholder="Scrivi al volo: un posto, un prezzo, un'idea…">${esc(n?.text || '')}</textarea>
   ${n ? `<button class="btn" onclick="A.noteToEntry('${n.id}')">Completa come voce</button><div class="small mut" style="text-align:center">Diventa una voce con categoria, prezzo, orario e tutti i dettagli.</div>
   <button class="btn danger" onclick="A.delNote('${n.id}')">Elimina nota</button>` : ''}`);
-  setTimeout(() => { const el = document.getElementById('f_notetext'); if (el) el.focus(); }, 60);
+  setTimeout(() => { const el = document.getElementById('f_notetext'); if (el) el.focus({ preventScroll: true }); }, 60);
 }
 function saveNote(id, date) {
   const t = trip(ui.tripId); const text = val('f_notetext');
