@@ -111,7 +111,7 @@ function attachPlaces(blk) {
     const inp = blk.querySelector(`[data-k="${k}"]`); if (!inp || inp.dataset.pac) return;
     inp.dataset.pac = '1'; inp.setAttribute('autocomplete', 'off');
     inp.closest('.field').classList.add('gfield');
-    inp.placeholder = kind === 'station' ? 'Cerca aeroporto, stazione, fermata…' : kind === 'name' ? 'Cerca il posto su Google Maps…' : 'Cerca indirizzo o nome del posto…';
+    inp.placeholder = kind === 'station' ? 'Aeroporto, stazione…' : kind === 'name' ? 'Cerca il posto…' : 'Via o nome del posto…';
     const box = document.createElement('div'); box.className = 'pac'; box.hidden = true; inp.insertAdjacentElement('afterend', box);
     inp.addEventListener('input', () => { clearTimeout(pacTimer); const q = inp.value.trim();
       if (q.length < 3) { box.hidden = true; return; } pacTimer = setTimeout(() => pacSearch(inp, box, q, kind, blk), 250); });
@@ -130,7 +130,7 @@ async function pacSearch(inp, box, q, kind, blk) {
     if (my !== pacReq) return;
     const preds = suggestions.map((x) => x.placePrediction).filter(Boolean).slice(0, 5);
     if (!preds.length) { box.hidden = true; return; }
-    box.innerHTML = preds.map((p, i) => `<button type="button" data-i="${i}"><b>${esc(p.mainText ? p.mainText.text : p.text.toString())}</b><span>${esc(p.secondaryText ? p.secondaryText.text : '')}</span></button>`).join('') + '<div class="pac-g">Risultati da Google Maps</div>';
+    box.innerHTML = preds.map((p, i) => `<button type="button" data-i="${i}"><b>${esc(p.mainText ? p.mainText.text : p.text.toString())}</b><span>${esc(p.secondaryText ? p.secondaryText.text : '')}</span></button>`).join('') + '<div class="pac-g">Google</div>';
     box.hidden = false;
     box.querySelectorAll('button').forEach((b) => b.addEventListener('mousedown', (ev) => { ev.preventDefault(); pacPick(preds[+b.dataset.i], inp, box, kind, blk); }));
   } catch (e) { box.hidden = true; if (e.message !== 'nokey') toast('Google Maps non risponde: controlla la chiave'); }

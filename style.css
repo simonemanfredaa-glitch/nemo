@@ -136,9 +136,8 @@ body.lock { overflow: hidden; }
 .more-ic { width: 28px; height: 28px; border-radius: 14px; background: var(--ink); color: var(--paper); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 details[open] .more-ic { transform: rotate(45deg); }
 .gfield { position: relative; }
-.gfield label::after { content: " · Google Maps"; color: #4A7BD0; letter-spacing: 0; text-transform: none; font-weight: 600; }
 .pac { position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 24px rgba(31,42,68,.16); z-index: 30; overflow: hidden; }
 .pac button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 10px 14px; border: none; border-bottom: 1px solid var(--line2); background: transparent; text-align: left; font-size: 15px; }
 .pac button span { font-size: 12px; color: var(--mut); }
-.pac-g { font-size: 11px; color: var(--mut); padding: 6px 14px; text-align: right; }
+.pac-g { font-size: 10px; color: var(--mut); opacity: .7; padding: 4px 14px 6px; text-align: right; }
 .gbtn { display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
