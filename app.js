@@ -35,7 +35,7 @@ const FIELDS = {
 };
 
 const ICONS = {
-  plus: '<path d="M12 5v14M5 12h14"/>', down: '<path d="M12 5v14M6 13l6 6 6-6"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>', back: '<path d="M15 6l-6 6 6 6"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>', up: '<path d="M12 19V5M6 11l6-6 6 6"/>', down: '<path d="M12 5v14M6 13l6 6 6-6"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>', back: '<path d="M15 6l-6 6 6 6"/>',
   cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   card: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/>',
   pin: '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
@@ -442,13 +442,48 @@ function vTodo(t) {
 }
 
 // --- Assistente
+const AIK = 'nemo.ai';
+const aiCfg = () => { try { return JSON.parse(localStorage.getItem(AIK) || '{}'); } catch (e) { return {}; } };
+let aiBusy = false, aiPlace = null;
+function tripContext(t) {
+  const L = [`Viaggio: ${t.name} · dal ${t.start} al ${t.end} · persone: ${t.people.join(', ')} · oggi è ${today()} alle ${pad(Math.floor(nowMin() / 60))}:${pad(nowMin() % 60)}`];
+  t.items.slice().sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''))).forEach((i) => {
+    const f = i.f || {}, bits = [i.date, i.time, i.cat, i.title];
+    if (i.cat === 'Alloggio') bits.push(`check-out ${i.endDate || ''}`);
+    if (f.from || f.to) bits.push(`${f.kind || ''} ${f.from || ''} → ${f.to || ''} ${f.company || ''} ${f.number || ''}`);
+    if (f.address) bits.push(`indirizzo: ${f.address}`);
+    if (f.baggage) bits.push(`bagaglio: ${f.baggage}`);
+    bits.push(i.status);
+    L.push('- ' + bits.filter(Boolean).join(' · '));
+  });
+  (t.notes || []).forEach((n) => L.push(`- appunto ${n.date || ''} ${n.time || ''}: ${n.text}`));
+  (t.todos || []).filter((x) => !x.done).forEach((x) => L.push(`- da fare: ${x.text}${x.date ? ' (' + x.date + ')' : ''}`));
+  return L.join('\n');
+}
+function mdLite(s) {
+  return esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/^#{1,4}\s*(.+)$/gm, '<b>$1</b>')
+    .replace(/^\s*[-•]\s+(.+)$/gm, '<span class="li">$1</span>').replace(/\n{2,}/g, '<br><br>').replace(/\n/g, '<br>').replace(/<\/span>(<br>)+/g, '</span>')
+    .replace(/(https?:\/\/[^\s<)]+)/g, '<a href="$1" target="_blank" rel="noopener">link</a>');
+}
 function vAssist(t) {
-  const ex = ['Quanto può essere grande il bagaglio a mano?', 'Ristoranti aperti stasera vicino all\'alloggio', 'Come ci muoviamo dall\'aeroporto al centro?', 'Cosa fare domani se piove?'];
-  return `${tripHead(t, 'Assistente di viaggio')}
-  <div class="navy col" style="margin-top:14px;gap:8px"><b class="serif" style="font-size:20px">In arrivo</b>
-    <div style="font-size:14px;line-height:1.45">Qui potrete chiedere qualsiasi cosa sul viaggio: bagagli, mezzi, ristoranti, hotel, bar vicino a dove siete. Risponde cercando online e conosce già il vostro programma e le prenotazioni.</div>
-    <div class="small mut">Si attiva dopo la sincronizzazione tra i vostri telefoni.</div></div>
-  <div class="sec"><div class="lab">Esempi di domande</div>${ex.map((q) => `<div class="card" style="padding:12px 14px;font-size:15px;color:var(--mut)">“${q}”</div>`).join('')}</div>`;
+  const cfg = aiCfg(), on = cfg.url && cfg.code, chat = t.chat || [];
+  const ex = ['Quanto può essere grande il bagaglio a mano?', 'Ristoranti aperti stasera vicino all\'alloggio', 'Come andiamo dall\'aeroporto al centro?', 'Cosa facciamo domani se piove?'];
+  let h = tripHead(t, 'Assistente di viaggio', chat.length ? `<button class="iconbtn" aria-label="Nuova conversazione" onclick="A.aiClear()">${svg('edit', 20)}</button>` : '');
+  if (!on) return h + `<div class="navy col" style="margin-top:14px;gap:8px"><b class="serif" style="font-size:20px">Quasi pronto</b>
+    <div style="font-size:14px;line-height:1.45">L'assistente conosce già il vostro programma e cerca online orari, mezzi, regole bagaglio, ristoranti e bar vicini. Per accenderlo serve collegarlo al suo server: una volta sola, circa 15 minuti.</div>
+    <button class="btn" style="background:var(--paper);color:var(--ink);height:44px;font-size:15px" onclick="A.settings()">Inserisci indirizzo e codice</button></div>
+    <div class="sec"><div class="lab">Potrete chiedere per esempio</div>${ex.map((q) => `<div class="card" style="padding:12px 14px;font-size:15px;color:var(--mut)">“${q}”</div>`).join('')}</div>`;
+  h += `<div class="chat">`;
+  if (!chat.length) h += `<div class="small mut" style="margin:14px 0 8px">Conosce già prenotazioni, alloggi e appunti di questo viaggio. Prova con:</div>
+    <div class="col" style="gap:6px">${ex.map((q) => `<button class="exq" onclick="A.aiAsk(${esc(JSON.stringify(q))})">${esc(q)}</button>`).join('')}</div>`;
+  h += chat.map((m) => m.role === 'user' ? `<div class="bub me">${esc(m.content)}</div>`
+    : `<div class="bub ai${m.err ? ' err' : ''}">${mdLite(m.content)}${m.sources && m.sources.length ? `<div class="srcs">${m.sources.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title.length > 48 ? s.title.slice(0, 46) + '…' : s.title)}</a>`).join('')}</div>` : ''}</div>`).join('');
+  if (aiBusy) h += `<div class="bub ai typing"><span></span><span></span><span></span></div>`;
+  h += `</div><div style="height:96px"></div>
+  <div class="askbar"><button class="locbtn ${aiPlace ? 'on' : ''}" aria-label="Usa la mia posizione" onclick="A.aiLoc()">${svg('pin', 20)}</button>
+    <textarea id="aiq" rows="1" placeholder="Chiedi qualcosa sul viaggio…" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px'"></textarea>
+    <button class="sendbtn" aria-label="Invia" ${aiBusy ? 'disabled' : ''} onclick="A.aiAsk()">${svg('up', 20, 2.4)}</button></div>`;
+  return h;
 }
 
 // ---------- fogli (form)
@@ -650,7 +685,10 @@ function settings() {
   <div class="field"><label for="f_gkey">Chiave Google Maps</label>
     <div class="row"><input id="f_gkey" class="inp" value="${esc(gkey())}" placeholder="Incolla qui la chiave AIza…" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="chip" style="height:48px" onclick="A.saveKey()">Salva</button></div>
     <div class="small mut">${gkey() ? '✓ Ricerca su Google Maps attiva' : 'Serve per cercare aeroporti, stazioni, hotel e ristoranti mentre scrivi.'}</div></div>
-  <div class="small mut">NEMO · prototipo v4</div>`);
+  <div class="field"><label for="f_aiurl">Assistente · indirizzo del server</label><input id="f_aiurl" class="inp" value="${esc(aiCfg().url || '')}" placeholder="https://….supabase.co/functions/v1/nemo-assistant" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+  <div class="field"><label for="f_aicode">Assistente · codice</label><div class="row"><input id="f_aicode" class="inp" value="${esc(aiCfg().code || '')}" placeholder="Il codice scelto sul server" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="chip" style="height:48px" onclick="A.saveAi()">Salva</button></div>
+    <div class="small mut">${aiCfg().url && aiCfg().code ? '✓ Assistente collegato' : 'Serve per accendere la scheda Assistente.'}</div></div>
+  <div class="small mut">NEMO · prototipo v5</div>`);
 }
 function exportData() {
   const blob = new Blob([JSON.stringify(db, null, 1)], { type: 'application/json' });
@@ -717,6 +755,28 @@ window.A = {
   delNote: (id) => { const t = trip(ui.tripId); t.notes = t.notes.filter((x) => x.id !== id); save(); closeSheet(); render(); },
   delTrip: (id) => { if (!confirm('Eliminare tutto il viaggio? Non si può annullare.')) return; db.trips = db.trips.filter((x) => x.id !== id); save(); closeSheet(); go('home'); },
   budToggle: (o) => { ui.budOpen = o; },
+  aiAsk: async (q) => {
+    const t = trip(ui.tripId), cfg = aiCfg(); q = (q || val('aiq')).trim(); if (!q || aiBusy || !t) return;
+    t.chat = (t.chat || []).concat([{ role: 'user', content: q }]); save(); aiBusy = true; render(); window.scrollTo(0, document.body.scrollHeight);
+    let ans;
+    try {
+      const r = await fetch(cfg.url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-nemo-code': cfg.code },
+        body: JSON.stringify({ messages: t.chat.filter((m) => !m.err).map((m) => ({ role: m.role, content: m.content })), trip: tripContext(t), place: aiPlace }) });
+      const d = await r.json().catch(() => ({}));
+      ans = r.ok ? { role: 'assistant', content: d.text || 'Nessuna risposta.', sources: d.sources || [] }
+        : { role: 'assistant', err: 1, content: r.status === 401 ? 'Il codice dell\'assistente non è giusto: controllalo nelle impostazioni.' : 'Non riesco a rispondere ora (' + (d.error || r.status) + '). Riprova tra poco.' };
+    } catch (e) { ans = { role: 'assistant', err: 1, content: 'Non riesco a raggiungere l\'assistente: controlla la connessione.' }; }
+    aiBusy = false; t.chat.push(ans); if (t.chat.length > 40) t.chat = t.chat.slice(-40); save();
+    if (ui.tab === 'assistente') { render(); window.scrollTo(0, document.body.scrollHeight); }
+  },
+  aiClear: () => { const t = trip(ui.tripId); t.chat = []; save(); render(); },
+  aiLoc: () => {
+    if (aiPlace) { aiPlace = null; toast('Posizione non più usata'); render(); return; }
+    if (!navigator.geolocation) return toast('Posizione non disponibile');
+    navigator.geolocation.getCurrentPosition((p) => { aiPlace = { lat: p.coords.latitude, lng: p.coords.longitude }; toast('Userò la vostra posizione per i consigli vicini'); render(); },
+      () => toast('Posizione non concessa'), { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+  },
+  saveAi: () => { const url = val('f_aiurl'), code = val('f_aicode'); try { localStorage.setItem(AIK, JSON.stringify({ url, code })); } catch (e) {} toast(url && code ? 'Assistente collegato' : 'Impostazioni salvate'); if (ui.view !== 'home') render(); settings(); },
   dayScrolled: (sc) => { const p = sc.querySelector('.nowpill'); if (!p) return; const tg = sc.querySelector('[data-target]') || sc.querySelector('.nowline'); if (!tg) return;
     const top = tg.offsetTop - sc.scrollTop; p.hidden = top > -20 && top < sc.clientHeight - 40; p.classList.toggle('up', top <= -20); },
   toNow: () => { const sc = document.querySelector('.dayscroll'), tg = sc && (sc.querySelector('[data-target]') || sc.querySelector('.nowline')); if (tg) sc.scrollTo({ top: Math.max(0, tg.offsetTop - 56), behavior: 'smooth' }); },
