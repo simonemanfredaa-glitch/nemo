@@ -26,16 +26,16 @@ const FIELDS = {
     ['number', 'N° volo / treno', 'text', 'Es. W6 1234'], ['date', 'Data partenza', 'date'], ['time', 'Ora partenza', 'time'], ['endDate', 'Data arrivo', 'date'], ['endTime', 'Ora arrivo', 'time'],
     ['baggage', 'Bagaglio incluso', 'text', 'Es. zaino + trolley 10 kg'], ['seats', 'Posti', 'text', 'Es. 12A, 12B']],
   Alloggio: [['title', 'Nome', 'text', 'Es. Hotel Kindred'], ['date', 'Check-in', 'date'], ['endDate', 'Check-out', 'date'], ['time', 'Orario check-in', 'time'],
-    ['address', 'Indirizzo', 'text', 'Per aprirlo in Maps'], ['cancel', 'Cancellazione gratuita entro', 'date'], ['host', 'Contatto host', 'text', 'Telefono o email']],
-  Cibo: [['title', 'Ristorante / cosa', 'text', 'Es. Time Out Market, pranzo…'], ['date', 'Data', 'date'], ['time', 'Ora', 'time'], ['guests', 'Persone', 'text', 'Es. 2'],
-    ['address', 'Indirizzo', 'text', 'Per aprirlo in Maps'], ['phone', 'Telefono', 'tel', '']],
+    ['cancel', 'Cancellazione gratuita entro', 'date'], ['address', 'Indirizzo', 'text', 'Per aprirlo in Maps'], ['host', 'Contatto host', 'text', 'Telefono o email']],
+  Cibo: [['title', 'Ristorante / cosa', 'text', 'Es. Time Out Market, pranzo…'], ['date', 'Data', 'date'], ['time', 'Ora', 'time'], ['guests', 'Persone', 'text', 'Es. 2'], ['phone', 'Telefono', 'tel', ''],
+    ['address', 'Indirizzo', 'text', 'Per aprirlo in Maps']],
   Esperienze: [['title', 'Nome', 'text', 'Es. Museo, tour, concerto'], ['date', 'Data', 'date'], ['time', 'Ora inizio', 'time'], ['endTime', 'Ora fine', 'time'],
-    ['address', 'Punto d\'incontro', 'text', 'Per aprirlo in Maps'], ['tickets', 'N° biglietti', 'text', 'Es. 2']],
+    ['tickets', 'N° biglietti', 'text', 'Es. 2'], ['address', 'Punto d\'incontro', 'text', 'Per aprirlo in Maps']],
   Varie: [['title', 'Cosa', 'text', 'Es. SIM, souvenir, farmacia'], ['date', 'Data', 'date'], ['time', 'Ora (facoltativa)', 'time']],
 };
 
 const ICONS = {
-  plus: '<path d="M12 5v14M5 12h14"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>', back: '<path d="M15 6l-6 6 6 6"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>', down: '<path d="M12 5v14M6 13l6 6 6-6"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>', back: '<path d="M15 6l-6 6 6 6"/>',
   cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   card: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/>',
   pin: '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
@@ -229,13 +229,20 @@ function go(view, opts = {}) { Object.assign(ui, { view }, opts); window.scrollT
 
 function render() {
   const app = $('#app');
-  if (ui.view === 'home') { app.innerHTML = vHome(); tabbar(false); return; }
+  if (ui.view === 'home') { document.body.classList.remove('fixedview'); app.innerHTML = vHome(); tabbar(false); return; }
   const t = trip(ui.tripId); if (!t) return go('home');
   const tabs = { viaggio: vViaggio, spese: vSpese, todo: vTodo, assistente: vAssist };
+  const old = document.querySelector('.dayscroll'), keep = old && old.dataset.day === ui.day ? old.scrollTop : null;
   app.innerHTML = (tabs[ui.tab] || vViaggio)(t);
+  document.body.classList.toggle('fixedview', !!document.querySelector('.dayscroll'));
   tabbar(true);
-  if (ui.scrollNow) { ui.scrollNow = false; const tg = document.querySelector('[data-target]') || document.querySelector('.nowline');
-    if (tg) window.scrollTo(0, Math.max(0, tg.getBoundingClientRect().top + window.scrollY - 220)); }
+  const sc = document.querySelector('.dayscroll');
+  if (sc) {
+    if (ui.scrollNow || keep === null) { const tg = sc.querySelector('[data-target]') || sc.querySelector('.nowline') || sc.querySelector('.timeline');
+      if (tg) sc.scrollTop = Math.max(0, tg.offsetTop - 56); }
+    else sc.scrollTop = keep;
+  } else if (ui.scrollNow) { const tg = document.querySelector('[data-target]'); if (tg) window.scrollTo(0, Math.max(0, tg.getBoundingClientRect().top + window.scrollY - 220)); }
+  ui.scrollNow = false;
 }
 function tabbar(show) {
   const nb = $('#tabbar'); nb.hidden = !show; if (!show) return;
@@ -245,6 +252,8 @@ function tabbar(show) {
 }
 const head = (right) => `<div class="top"><button class="iconbtn back" aria-label="Torna ai viaggi" onclick="A.home()">${svg('back')}</button>${right || ''}</div>`;
 const plusBtn = (fn, label) => `<button class="plus" aria-label="${label}" onclick="${fn}">${svg('plus', 20, 2.2)}</button>`;
+const tripHead = (t, sub, right) => `<div class="thead"><button class="iconbtn back" aria-label="Torna ai viaggi" onclick="A.home()">${svg('back')}</button>
+  <div class="grow"><h1 class="ttl">${tname(t)}</h1><div class="tsub">${sub}</div></div>${right || ''}</div>`;
 const tname = (t) => `${esc(t.name)}${t.emoji ? ' ' + t.emoji : ''}`;
 
 // --- Home
@@ -283,11 +292,14 @@ function vViaggio(t) {
   const sub = ph === 'corso' ? `Giorno <span class="hl"><b>${diffDays(t.start, d) + 1} di ${nDays(t)}</b></span>`
     : ph === 'futuro' ? `Mancano <span class="hl"><b>${diffDays(d, t.start)} giorni</b></span>` : 'Viaggio concluso';
   if (ui.mode !== 'periodo') ui.mode = 'giorno';
-  return `${head(`<span class="row" style="gap:4px"><button class="iconbtn" aria-label="Modifica viaggio" onclick="A.tripForm('${t.id}')">${svg('edit', 20)}</button>${plusBtn('A.entryForm()', 'Aggiungi voce')}</span>`)}
-  <h1>${tname(t)}</h1>
-  <div class="between"><span class="mut" style="font-size:14px">${fmtRange(t.start, t.end)}</span><span style="font-size:14px">${sub}</span></div>
-  <div class="seg" style="margin-top:12px"><button class="${ui.mode === 'giorno' ? 'on' : ''}" onclick="A.mode('giorno')">Oggi</button><button class="${ui.mode === 'periodo' ? 'on' : ''}" onclick="A.mode('periodo')">Più giorni</button></div>
-  ${ui.mode === 'periodo' ? vPeriod(t) : vDay(t)}`;
+  let dsub = fmtRange(t.start, t.end) + (ph === 'corso' ? '' : ' · ' + sub);
+  if (ui.mode === 'giorno') { if (!ui.day || ui.day < t.start || ui.day > t.end) ui.day = d >= t.start && d <= t.end ? d : t.start;
+    const D = parse(ui.day); const g = GG[D.getDay()]; dsub = `${g.charAt(0).toUpperCase() + g.slice(1)} <span class="hl"><b>${D.getDate()} ${MML[D.getMonth()]}</b></span> · giorno ${diffDays(t.start, ui.day) + 1}/${nDays(t)}`; }
+  const top = tripHead(t, dsub, `<button class="iconbtn" aria-label="Modifica viaggio" onclick="A.tripForm('${t.id}')">${svg('edit', 20)}</button>${plusBtn('A.entryForm()', 'Aggiungi voce')}`) + `
+  <div class="seg slim" style="margin-top:8px"><button class="${ui.mode === 'giorno' ? 'on' : ''}" onclick="A.mode('giorno')">Giorno</button><button class="${ui.mode === 'periodo' ? 'on' : ''}" onclick="A.mode('periodo')">Più giorni</button></div>`;
+  if (ui.mode === 'periodo') return top + vPeriod(t);
+  const dv = vDay(t);
+  return `<div class="fixtop">${top}${dv.fixed}</div><div class="dayscroll" data-day="${ui.day}" onscroll="A.dayScrolled(this)" ontouchstart="A.swS(event)" ontouchend="A.swE(event,'${t.id}')">${dv.scroll}</div>`;
 }
 function dayEntries(t, date) {
   const timed = [], untimed = [];
@@ -330,16 +342,16 @@ function vDay(t) {
   const now = isToday && nm >= H0 * 60 ? `<div class="nowline" style="top:${y(nm)}px"></div>` : '';
   const stays = staysOn(t, day).map((st) => { const last = addDays(day, 1) === st.endDate;
     return `<div class="band" role="button" style="cursor:pointer" onclick="A.entryForm('${st.id}')"><b>${esc(st.title)}${st.status === 'pagato' ? ' <span style="color:var(--ok)">✓</span>' : st.status === 'da prenotare' ? ' <span class="wavy small">da prenotare</span>' : ''}</b><span>${last ? 'ultima notte · check-out domani' : 'notte ' + (diffDays(st.date, day) + 1) + ' di ' + diffDays(st.date, st.endDate || addDays(st.date, 1))}</span></div>`; }).join('');
-  const unt = untimed.length ? `<details class="card" style="margin-top:8px" ${ui.untOpen ? 'open' : ''} ontoggle="A.untToggle(this.open)"><summary class="between" style="padding:10px 14px;list-style:none;cursor:pointer;min-height:40px"><span class="small"><b>${untimed.length}</b> ${untimed.length === 1 ? 'voce' : 'voci'} senza orario</span><span class="small mut">${eur(untimed.reduce((a, e) => a + num(e.price), 0))}</span></summary>
-    <div class="list">${untimed.map((e) => `<button class="between" style="width:100%;background:none;border:none;padding:9px 14px;text-align:left" onclick="A.entryForm('${e.id}')"><span class="row" style="gap:8px"><span class="dot" style="background:${CATS[e.cat].s}"></span><span style="font-size:14px">${esc(e.title)}${e.todo ? ' <span class="wavy small">da prenotare</span>' : ''}</span></span><b style="font-size:14px">${e.price ? eur(e.price) : ''}</b></button>`).join('')}</div></details>` : '';
-  return `<div class="serif" style="font-size:20px;margin-top:14px">${GGL[D.getDay()]} <span class="hl">${D.getDate()} ${MML[D.getMonth()]}</span> <span class="mut" style="font-family:Karla,Arial,sans-serif;font-size:13px;font-weight:400">· giorno ${n} di ${nDays(t)}</span></div>
-  <div class="dayhead" style="margin-top:10px;grid-template-columns:repeat(${strip.length},minmax(0,1fr))">${strip.map((x) => { const X = parse(x);
+  const unt = untimed.length ? `<details class="card" ${ui.untOpen ? 'open' : ''} ontoggle="A.untToggle(this.open)"><summary class="between" style="padding:10px 14px;list-style:none;cursor:pointer;min-height:40px"><span class="small"><b>${untimed.length}</b> ${untimed.length === 1 ? 'voce' : 'voci'} senza orario</span><span class="unt-ch mut">${svg('chev', 16)}</span></summary>
+    <div class="list">${untimed.map((e) => `<button class="between" style="width:100%;background:none;border:none;padding:9px 14px;text-align:left" onclick="A.entryForm('${e.id}')"><span class="row" style="gap:8px"><span class="dot" style="background:${CATS[e.cat].s}"></span><span style="font-size:14px">${esc(e.title)}${e.todo ? ' <span class="wavy small">da prenotare</span>' : ''}</span></span>${svg('chev', 16)}</button>`).join('')}</div></details>` : '';
+  return { fixed: `<div class="dayhead" style="margin-top:10px;grid-template-columns:repeat(${strip.length},minmax(0,1fr))">${strip.map((x) => { const X = parse(x);
     return `<button class="daybtn ${x === day ? 'on' : ''} ${x < d && x !== day ? 'past' : ''}" onclick="A.day('${x}')"><small>${GG[X.getDay()].toUpperCase()}</small><b>${X.getDate()}</b></button>`; }).join('')}</div>
-  <div class="col" style="gap:6px;margin-top:10px">${stays}</div>
-  <button class="qadd" onclick="A.noteForm(null,'${day}')">${svg('plus', 18, 2.4)} Appunto veloce</button>
-  ${notes.length ? `<div class="col" style="gap:6px;margin-top:6px">${notes.map(noteRow).join('')}</div>` : ''}
-  ${unt}
-  <div class="timeline" style="margin-top:12px">${hours}${evs}${nevs}${now}</div>`;
+  ${stays ? `<div class="col" style="gap:6px;margin-top:8px">${stays}</div>` : ''}
+  <button class="qadd" onclick="A.noteForm(null,'${day}')">${svg('plus', 18, 2.4)} Appunto veloce</button>`,
+  scroll: `${notes.length || unt ? `<div class="col" style="gap:6px;padding-top:8px">${notes.map(noteRow).join('')}${unt}</div>` : ''}
+  ${!timed.length && !tnotes.length && !notes.length && !untimed.length ? `<div class="dayempty">Niente in programma per questo giorno.<br>Tocca <b>+</b> per aggiungere una prenotazione o <b>Appunto veloce</b> per segnarti un'idea.</div>` : ''}
+  <div class="timeline" style="margin-top:8px">${hours}${evs}${nevs}${now}</div><div style="height:24px"></div>
+  ${isToday && (targetId || now) ? `<button class="nowpill" hidden onclick="A.toNow()">${svg('down', 16, 2.2)} Adesso</button>` : ''}` };
 }
 function vPeriod(t) {
   const d = today(), N = Math.min(5, nDays(t));
@@ -398,9 +410,8 @@ function vSpese(t) {
     <div class="card list">${rows.map((e) => `<button class="between" style="width:100%;background:none;border:none;padding:10px 14px;text-align:left${e.status === 'da prenotare' ? ';opacity:.6' : ''}" onclick="A.entryForm('${e.id}')">
       <span class="row" style="align-items:stretch"><span style="width:5px;border-radius:3px;background:${CATS[e.cat].s}"></span><span class="col" style="gap:1px"><b style="font-size:14px">${esc(e.title)}</b><span class="t2">${e.cat} · ${esc(e.paidBy)} · ${e.split === 'all' ? (np === 2 ? '50/50' : 'divisa tra tutti') : 'solo ' + esc(e.split.join(', '))}${e.status === 'da prenotare' ? ' · da prenotare' : ''}</span></span></span>
       <b style="font-size:14px;white-space:nowrap">${eur(e.price)}</b></button>`).join('')}</div>`; }).join('');
-  return `${head(plusBtn('A.entryForm()', 'Aggiungi voce'))}
-  <div class="small mut">${tname(t)} · spese</div>
-  <div class="row" style="align-items:baseline;gap:8px"><span class="serif" style="font-size:34px">${eur(sp)}</span>${bt ? `<span class="mut">su ${eur0(bt)} di budget</span>` : ''}</div>
+  return `${tripHead(t, 'Spese', plusBtn('A.entryForm()', 'Aggiungi voce'))}
+  <div class="row" style="align-items:baseline;gap:8px;margin-top:10px"><span class="serif" style="font-size:34px">${eur(sp)}</span>${bt ? `<span class="mut">su ${eur0(bt)} di budget</span>` : ''}</div>
   <div class="small mut">${np > 1 ? eur(sp / np) + ' a testa · ' : ''}${t.people.join(', ')}${bt ? ' · ' + Math.round((sp / bt) * 100) + '% del budget' : ''}</div>${daily}
   ${saldo}
   ${bt ? `<details class="card" style="margin-top:14px" ${ui.budOpen ? 'open' : ''} ontoggle="A.budToggle(this.open)"><summary class="between" style="padding:12px 16px;list-style:none;cursor:pointer;min-height:44px">
@@ -418,9 +429,7 @@ function vTodo(t) {
   const row = (x) => `<div class="between" style="padding:6px 14px"><label class="check"><input type="checkbox" onchange="A.todoDone('${x.id}')"><span>${esc(x.text)}${x.time ? ` <span class="mut small">${x.time}</span>` : ''}</span></label>
     <button class="iconbtn" aria-label="Modifica" style="color:var(--mut)" onclick="A.todoForm('${x.id}')">${svg('edit', 18)}</button></div>`;
   const opts = ['<option value="">Senza data</option>'].concat(Array.from({ length: nDays(t) }, (_, i) => addDays(t.start, i)).map((x) => `<option value="${x}">${fmtDay(x)}</option>`)).join('');
-  return `${head()}
-  <h1>To-do <span class="hl">list</span></h1>
-  <div class="small mut">${tname(t)} · ${open.length} da fare</div>
+  return `${tripHead(t, `To-do · <span class="hl"><b>${open.length} da fare</b></span>`)}
   <div class="card pad col" style="margin-top:14px;gap:8px">
     <input id="tdNew" class="inp" placeholder="Cosa c'è da fare?" onkeydown="if(event.key==='Enter')A.todoAdd()">
     <div class="row"><select id="tdDate" class="inp" style="flex:1">${opts}</select><button class="plus" style="border-radius:12px;width:48px;height:48px;background:var(--ink)" aria-label="Aggiungi" onclick="A.todoAdd()">${svg('plus', 20, 2.2)}</button></div>
@@ -435,9 +444,7 @@ function vTodo(t) {
 // --- Assistente
 function vAssist(t) {
   const ex = ['Quanto può essere grande il bagaglio a mano?', 'Ristoranti aperti stasera vicino all\'alloggio', 'Come ci muoviamo dall\'aeroporto al centro?', 'Cosa fare domani se piove?'];
-  return `${head()}
-  <h1>Assistente <span class="hl">di viaggio</span></h1>
-  <div class="small mut">${tname(t)}</div>
+  return `${tripHead(t, 'Assistente di viaggio')}
   <div class="navy col" style="margin-top:14px;gap:8px"><b class="serif" style="font-size:20px">In arrivo</b>
     <div style="font-size:14px;line-height:1.45">Qui potrete chiedere qualsiasi cosa sul viaggio: bagagli, mezzi, ristoranti, hotel, bar vicino a dove siete. Risponde cercando online e conosce già il vostro programma e le prenotazioni.</div>
     <div class="small mut">Si attiva dopo la sincronizzazione tra i vostri telefoni.</div></div>
@@ -494,7 +501,7 @@ function catFields(c, i) {
   const rows = FIELDS[c].map(([k, l, type, ph]) => {
     if (type === 'kind') return `<div class="field full"><label>${l}</label>${segH('kind_' + c, TRANSPORT_TYPES.map((x) => [x, x]), f.kind || 'Volo')}</div>`;
     const it = type === 'text' || type === 'tel' ? type : type;
-    return `<div class="field ${['title', 'address', 'baggage', 'host'].includes(k) ? 'full' : ''}"><label for="cf_${c}_${k}">${l}</label><input id="cf_${c}_${k}" data-k="${k}" type="${it}" class="inp" value="${esc(f[k] || '')}" placeholder="${esc(ph || '')}"></div>`;
+    return `<div class="field ${['title', 'address', 'baggage', 'host', 'seats'].includes(k) ? 'full' : ''}"><label for="cf_${c}_${k}">${l}</label><input id="cf_${c}_${k}" data-k="${k}" type="${it}" class="inp" value="${esc(f[k] || '')}" placeholder="${esc(ph || '')}"></div>`;
   }).join('');
   return `<div class="catblock grid2" data-cat="${c}" ${c === (i?.cat || ui.formCat) ? '' : 'hidden'}>${rows}</div>`;
 }
@@ -709,7 +716,14 @@ window.A = {
   delEntry: (id) => { if (!confirm('Eliminare questa voce?')) return; const t = trip(ui.tripId); t.items = t.items.filter((x) => x.id !== id); save(); closeSheet(); render(); },
   delNote: (id) => { const t = trip(ui.tripId); t.notes = t.notes.filter((x) => x.id !== id); save(); closeSheet(); render(); },
   delTrip: (id) => { if (!confirm('Eliminare tutto il viaggio? Non si può annullare.')) return; db.trips = db.trips.filter((x) => x.id !== id); save(); closeSheet(); go('home'); },
-  budToggle: (o) => { ui.budOpen = o; }, untToggle: (o) => { ui.untOpen = o; },
+  budToggle: (o) => { ui.budOpen = o; },
+  dayScrolled: (sc) => { const p = sc.querySelector('.nowpill'); if (!p) return; const tg = sc.querySelector('[data-target]') || sc.querySelector('.nowline'); if (!tg) return;
+    const top = tg.offsetTop - sc.scrollTop; p.hidden = top > -20 && top < sc.clientHeight - 40; p.classList.toggle('up', top <= -20); },
+  toNow: () => { const sc = document.querySelector('.dayscroll'), tg = sc && (sc.querySelector('[data-target]') || sc.querySelector('.nowline')); if (tg) sc.scrollTo({ top: Math.max(0, tg.offsetTop - 56), behavior: 'smooth' }); },
+  swS: (e) => { const p = e.touches[0]; ui.sw = [p.clientX, p.clientY]; },
+  swE: (e, id) => { if (!ui.sw) return; const p = e.changedTouches[0], dx = p.clientX - ui.sw[0], dy = p.clientY - ui.sw[1]; ui.sw = null;
+    if (Math.abs(dx) < 70 || Math.abs(dy) > 45) return; const t = trip(id), nd = addDays(ui.day, dx < 0 ? 1 : -1);
+    if (nd < t.start || nd > t.end) return; A.day(nd); }, untToggle: (o) => { ui.untOpen = o; },
   todoAdd: () => { const v = val('tdNew'); if (!v) return; const t = trip(ui.tripId); t.todos.push({ id: uid(), text: v, date: val('tdDate'), time: '', done: false }); save(); render(); },
   todoDone: (id) => { const t = trip(ui.tripId); const x = t.todos.find((y) => y.id === id); x.done = true; save(); render(); toast('Fatto', 'Annulla', () => { x.done = false; save(); render(); }); },
   todoUndo: (id) => { const t = trip(ui.tripId); t.todos.find((y) => y.id === id).done = false; save(); render(); },

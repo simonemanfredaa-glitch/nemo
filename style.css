@@ -145,3 +145,22 @@ details[open] .more-ic { transform: rotate(45deg); }
 .gbtn { display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
 
 .gearbtn { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom)); width: 56px; height: 56px; border-radius: 28px; border: none; background: var(--ink); color: var(--paper); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 22px rgba(31,42,68,.28); z-index: 20; }
+/* vista viaggio: intestazione fissa, scorre solo il calendario */
+.thead { display: flex; align-items: center; gap: 4px; min-height: 48px; }
+.thead .back { margin-left: -12px; }
+.ttl { font-size: 22px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tsub { font-size: 13px; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tsub b { color: var(--ink); }
+.seg.slim button { min-height: 34px; }
+.dayttl { display: flex; justify-content: space-between; align-items: baseline; margin-top: 12px; }
+.dayttl .serif { font-size: 19px; }
+.unt-ch { display: inline-flex; transition: transform .15s; }
+details[open] .unt-ch { transform: rotate(90deg); }
+body.fixedview { height: 100dvh; overflow: hidden; }
+body.fixedview #app { height: 100dvh; display: flex; flex-direction: column; padding-bottom: calc(var(--safe-b) + 63px); }
+body.fixedview .fixtop { flex-shrink: 0; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+body.fixedview .qadd { min-height: 40px; }
+.dayscroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; margin: 0 -20px; padding: 0 20px; }
+.dayempty { margin-top: 10px; padding: 14px 16px; border: 1.5px dashed var(--dash); border-radius: 14px; color: var(--mut); font-size: 14px; line-height: 1.45; text-align: center; }
+.nowpill { position: sticky; bottom: 12px; display: flex; align-items: center; gap: 6px; margin: -40px auto 0; height: 36px; padding: 0 14px; border-radius: 18px; border: none; background: var(--ink); color: var(--paper); font-weight: 700; font-size: 14px; box-shadow: 0 6px 16px rgba(31,42,68,.25); z-index: 5; }
+.nowpill.up svg { transform: rotate(180deg); }
