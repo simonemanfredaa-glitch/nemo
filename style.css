@@ -82,9 +82,11 @@ textarea.inp { height: 84px; padding: 12px 14px; resize: vertical; }
 .band { background: var(--c-all); border-radius: 10px; padding: 7px 12px; font-size: 13px; display: flex; justify-content: space-between; gap: 8px; }
 .timeline { position: relative; }
 .hour { border-top: 1px solid var(--line); font-size: 11px; color: var(--mut); }
-.ev { position: absolute; left: 48px; right: 0; border-radius: 8px; padding: 5px 10px; overflow: hidden; border-left: 4px solid; text-align: left; border-top: none; border-right: none; border-bottom: none; }
-.ev b { display: block; font-size: 14px; }
-.ev span { font-size: 12px; color: #3E4658; }
+.ev { position: absolute; left: 48px; right: 0; border-radius: 8px; padding: 7px 10px; display: flex; align-items: flex-start; gap: 8px; overflow: hidden; border-left: 4px solid; text-align: left; border-top: none; border-right: none; border-bottom: none; }
+.ev b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ev-ok { font-style: normal; font-weight: 700; color: var(--ok); font-size: 13px; }
+.ev .badge { margin-left: auto; flex-shrink: 0; }
+.ev > span { font-size: 12px; color: #3E4658; white-space: nowrap; flex-shrink: 0; line-height: 19px; }
 .nowline { position: absolute; left: 40px; right: 0; height: 2px; background: var(--terra); z-index: 2; }
 .nowline::before { content: ""; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 5px; background: var(--terra); }
 .pgrid { position: relative; }
@@ -126,10 +128,10 @@ details > summary::-webkit-details-marker { display: none; }
 .sheet { top: 0; bottom: 0; height: 100%; height: 100dvh; }
 .sheet > .panel { max-height: calc(100vh - 24px); max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 16px); overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 body.lock { overflow: hidden; }
-.qadd { margin-top: 10px; width: 100%; min-height: 44px; border: none; border-radius: 12px; background: #FFE14D; color: #3B3418; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-.qnote { width: 100%; min-height: 44px; border: none; border-radius: 12px; background: #FFF4B8; color: #3B3418; display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 15px; }
-.qn-dot { width: 10px; height: 10px; border-radius: 5px; background: #E0B800; flex-shrink: 0; }
-.qn-ev { background: #FFE14D !important; border-left-color: #E0B800 !important; outline: 1.5px dashed #C9A200; }
+.qadd { margin-top: 10px; width: 100%; min-height: 44px; border: none; border-radius: 12px; background: var(--hl); color: #3B3418; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.qnote { width: 100%; min-height: 44px; border: none; border-radius: 12px; background: #FBEBC0; color: #3B3418; display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 15px; }
+.qn-dot { width: 10px; height: 10px; border-radius: 5px; background: #D9B24A; flex-shrink: 0; }
+.qn-ev { background: #FBEBC0 !important; border-left-color: var(--hl) !important; outline: 1.5px dashed #D9B24A; }
 .qn-inp { font-size: 17px; height: 52px; background: #FFF9D6; border-color: #E8D16A; }
 .amount { font-size: 28px !important; }
 .more-sum { min-height: 50px; display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; cursor: pointer; list-style: none; }
@@ -141,3 +143,5 @@ details[open] .more-ic { transform: rotate(45deg); }
 .pac button span { font-size: 12px; color: var(--mut); }
 .pac-g { font-size: 10px; color: var(--mut); opacity: .7; padding: 4px 14px 6px; text-align: right; }
 .gbtn { display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+
+.gearbtn { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom)); width: 56px; height: 56px; border-radius: 28px; border: none; background: var(--ink); color: var(--paper); display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 22px rgba(31,42,68,.28); z-index: 20; }

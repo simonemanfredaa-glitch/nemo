@@ -35,7 +35,7 @@ const FIELDS = {
 };
 
 const ICONS = {
-  plus: '<path d="M12 5v14M5 12h14"/>', back: '<path d="M15 6l-6 6 6 6"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>', back: '<path d="M15 6l-6 6 6 6"/>',
   cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   card: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/>',
   pin: '<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
@@ -258,7 +258,7 @@ function vHome() {
   if (past.length) h += `<div class="sec"><div class="lab">Passati</div><div class="card list">${past.map((t) =>
     `<button class="between" style="width:100%;background:none;border:none;padding:13px 16px;text-align:left" onclick="A.open('${t.id}')"><span class="serif" style="font-size:17px">${tname(t)}</span><span class="small mut">${fmtRange(t.start, t.end)} · ${eur0(spent(t))}</span></button>`).join('')}</div></div>`;
   if (!db.trips.length) h += `<div class="sec"><div class="empty">Nessun viaggio. Tocca + per crearne uno.</div></div>`;
-  h += `<div class="sec" style="margin-top:28px"><button class="btn ghost" onclick="A.settings()">Backup e impostazioni</button></div>`;
+  h += `<div style="height:96px"></div><button class="gearbtn" aria-label="Backup e impostazioni" onclick="A.settings()">${svg('gear', 24)}</button>`;
   return h;
 }
 function cardNow(t) {
@@ -320,13 +320,13 @@ function vDay(t) {
   const targetId = curId || nextId || (!isToday && timed.length ? timed[0].id : null);
   const evs = timed.map((e) => { const a = tmin(e.time), b = Math.max(tmin(e.endTime) || a + 60, a + 30);
     const cur = e.id === curId, nx = !curId && e.id === nextId;
-    const tag = cur ? '<span class="badge" style="position:absolute;right:8px;top:6px;background:var(--ink);color:var(--paper)">ADESSO</span>' : nx ? '<span class="badge b-now" style="position:absolute;right:8px;top:6px">PROSSIMO</span>' : '';
+    const tag = cur ? '<span class="badge" style="background:var(--ink);color:var(--paper)">ADESSO</span>' : nx ? '<span class="badge b-now">PROSSIMO</span>' : '';
     const stx = e.todo ? `;border:1.5px dashed ${CATS[e.cat].s};border-left:4px solid ${CATS[e.cat].s}` : e.paid ? `;box-shadow:inset 0 0 0 1.5px ${CATS[e.cat].s}` : '';
     const extra = cur ? ';outline:2px solid var(--ink);box-shadow:0 6px 18px rgba(31,42,68,.18);z-index:3' : nx ? ';outline:2px solid var(--ink);z-index:3' : '';
-    const st = e.todo ? ' · <span class="wavy">da prenotare</span>' : e.paid ? ' · <b style="display:inline;font-size:12px;color:var(--ok)">✓ pagato</b>' : '';
-    return `<button class="ev" ${e.id === targetId ? 'data-target="1"' : ''} style="top:${y(a)}px;height:${Math.max(y(b) - y(a), 34)}px;background:${CATS[e.cat].bg};border-left-color:${CATS[e.cat].s}${stx}${isToday && b <= nm ? ';opacity:.6' : ''}${extra}" onclick="A.openEntry('${e.kind}','${e.id}')">${tag}<b>${esc(e.title)}</b><span>${e.time}${e.endTime ? ' – ' + e.endTime : ''}${e.price ? ' · ' + eur(e.price) : e.sub ? ' · ' + e.sub : ''}${st}</span></button>`; }).join('');
+    const st = e.paid ? '<i class="ev-ok">✓</i>' : '';
+    return `<button class="ev" ${e.id === targetId ? 'data-target="1"' : ''} style="top:${y(a)}px;height:${Math.max(y(b) - y(a), 34)}px;background:${CATS[e.cat].bg};border-left-color:${CATS[e.cat].s}${stx}${isToday && b <= nm ? ';opacity:.6' : ''}${extra}" onclick="A.openEntry('${e.kind}','${e.id}')"><b>${esc(e.title)}</b>${st}<span>${e.time}${e.endTime ? '–' + e.endTime : ''}</span>${tag}</button>`; }).join('');
   const nevs = tnotes.map((n) => { const a = tmin(n.time);
-    return `<button class="ev qn-ev" style="top:${y(a)}px;height:34px" onclick="A.noteForm('${n.id}')"><b>${esc(n.text)}</b><span>${n.time} · appunto da completare</span></button>`; }).join('');
+    return `<button class="ev qn-ev" style="top:${y(a)}px;height:34px" onclick="A.noteForm('${n.id}')"><b>${esc(n.text)}</b><span>${n.time}</span></button>`; }).join('');
   const now = isToday && nm >= H0 * 60 ? `<div class="nowline" style="top:${y(nm)}px"></div>` : '';
   const stays = staysOn(t, day).map((st) => { const last = addDays(day, 1) === st.endDate;
     return `<div class="band" role="button" style="cursor:pointer" onclick="A.entryForm('${st.id}')"><b>${esc(st.title)}${st.status === 'pagato' ? ' <span style="color:var(--ok)">✓</span>' : st.status === 'da prenotare' ? ' <span class="wavy small">da prenotare</span>' : ''}</b><span>${last ? 'ultima notte · check-out domani' : 'notte ' + (diffDays(st.date, day) + 1) + ' di ' + diffDays(st.date, st.endDate || addDays(st.date, 1))}</span></div>`; }).join('');
@@ -361,7 +361,7 @@ function vPeriod(t) {
   const evs = days.map((x, i) => dayEntries(t, x).timed.map((e) => { const a = tmin(e.time), b = Math.max(tmin(e.endTime) || a + 60, a + 30);
     const stx = e.todo ? `;border:1.5px dashed ${CATS[e.cat].s};border-left:3px solid ${CATS[e.cat].s}` : e.paid ? `;box-shadow:inset 0 0 0 1.5px ${CATS[e.cat].s}` : '';
     return `<div class="pcol-ev" onclick="A.openEntry('${e.kind}','${e.id}')" style="top:${y(a)}px;height:${Math.max(y(b) - y(a), 30)}px;left:${left(i)};width:${w};background:${CATS[e.cat].bg};border-left-color:${CATS[e.cat].s}${stx}${x < d ? ';opacity:.6' : ''}"><b>${esc(e.title)}</b><div style="color:#3E4658">${e.time}${e.paid ? ' <span style="color:var(--ok);font-weight:700">✓</span>' : ''}</div></div>`; }).join('')).join('');
-  const nev = days.map((x, i) => (t.notes || []).filter((n) => n.date === x && n.time).map((n) => `<div class="pcol-ev" onclick="A.noteForm('${n.id}')" style="top:${y(tmin(n.time))}px;height:30px;left:${left(i)};width:${w};background:#FFE14D;border-left-color:#E0B800"><b>${esc(n.text)}</b><div>${n.time}</div></div>`).join('')).join('');
+  const nev = days.map((x, i) => (t.notes || []).filter((n) => n.date === x && n.time).map((n) => `<div class="pcol-ev" onclick="A.noteForm('${n.id}')" style="top:${y(tmin(n.time))}px;height:30px;left:${left(i)};width:${w};background:#FBEBC0;border-left-color:var(--hl)"><b>${esc(n.text)}</b><div>${n.time}</div></div>`).join('')).join('');
   const nm = nowMin(), ti = days.indexOf(d);
   const now = ti >= 0 && nm >= H0 * 60 ? `<div style="position:absolute;top:${y(nm)}px;height:2px;left:${left(ti)};width:${w};background:var(--terra);z-index:2"></div>` : '';
   const canPrev = ui.pStart > t.start, canNext = addDays(ui.pStart, N - 1) < t.end;
