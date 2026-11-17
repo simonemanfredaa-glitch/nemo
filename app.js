@@ -245,7 +245,7 @@ function render() {
   ui.scrollNow = false;
 }
 function tabbar(show) {
-  const nb = $('#tabbar'); nb.hidden = !show; if (!show) return;
+  const nb = $('#tabbar'); nb.hidden = !show; document.body.classList.toggle('rail', !!show); if (!show) return;
   const T = [['viaggio', 'Viaggio', 'cal'], ['spese', 'Spese', 'card'], ['todo', 'To-do', 'check'], ['assistente', 'Assistente', 'chat']];
   nb.style.gridTemplateColumns = `repeat(${T.length},minmax(0,1fr))`;
   nb.innerHTML = T.map(([k, l, i]) => `<button class="${ui.tab === k ? 'on' : ''}" onclick="A.tab('${k}')">${svg(i)}${l}</button>`).join('');

@@ -186,3 +186,29 @@ body.fixedview .qadd { min-height: 40px; }
 .sendbtn:disabled { opacity: .5; }
 .locbtn { background: transparent; color: var(--mut); border: 1px solid var(--line); }
 .locbtn.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+/* ---------- iPhone in orizzontale ---------- */
+@media (orientation: landscape) and (max-height: 540px) {
+  :root { --rail: calc(84px + env(safe-area-inset-left, 0px)); --safe-r: env(safe-area-inset-right, 0px); }
+  #app { max-width: 820px; padding: calc(var(--safe-t) + 10px) calc(24px + var(--safe-r)) 28px 24px; }
+  body.rail #app { margin-left: var(--rail); margin-right: auto; max-width: min(900px, calc(100vw - var(--rail))); }
+  /* barra delle schede: diventa una colonna a sinistra */
+  #tabbar { top: 0; bottom: 0; right: auto; width: var(--rail); padding: 0 0 0 env(safe-area-inset-left, 0px); border-top: none; border-right: 1px solid var(--line);
+    display: flex !important; flex-direction: column; justify-content: center; gap: 4px; }
+  #tabbar[hidden] { display: none !important; }
+  #tabbar button { height: 64px; }
+  .toast { bottom: calc(var(--safe-b) + 16px); }
+  .ttl { font-size: 20px; }
+  .thead { min-height: 44px; }
+  h1 { font-size: 26px; }
+  /* vista Giorno: informazioni a sinistra, calendario a destra */
+  body.fixedview #app { flex-direction: row; gap: 22px; padding-bottom: 0; padding-top: calc(var(--safe-t) + 8px); }
+  body.fixedview .fixtop { width: 44%; max-width: 380px; overflow-y: auto; border-bottom: none; border-right: 1px solid var(--line); padding: 0 16px 16px 0; overscroll-behavior: contain; }
+  .dayscroll { margin: 0; padding: 0 4px; height: 100%; }
+  .dayhead .daybtn { min-height: 52px; }
+  /* assistente */
+  .askbar { left: var(--rail); right: 0; bottom: 0; max-width: none; padding-bottom: calc(8px + var(--safe-b)); padding-right: calc(12px + var(--safe-r)); }
+  /* schede a comparsa: più larghe e alte quanto lo schermo */
+  .sheet > .panel { max-width: 680px; border-radius: 22px 22px 0 0; }
+  .gearbtn { bottom: calc(12px + var(--safe-b)); }
+}
